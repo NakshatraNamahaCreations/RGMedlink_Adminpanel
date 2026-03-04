@@ -1,0 +1,546 @@
+import { useEffect, useState } from "react";
+import API from "../api";
+import { Card, Btn } from "./Styles";
+import { FaSearch, FaEye } from "react-icons/fa";
+
+const OrdersView = () => {
+  const [orders, setOrders] = useState([]);
+  const [search, setSearch] = useState("");
+  const [selectedOrder, setSelectedOrder] = useState(null);
+const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+ const fetchOrders = async () => {
+  try {
+    setLoading(true);
+    const res = await API.get("/orders");
+    setOrders(res.data);
+  } catch (err) {
+    console.error("Failed to fetch orders", err);
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const updateStatus = async (id, status) => {
+    try {
+      await API.patch(`/orders/${id}/status`, { status });
+      fetchOrders();
+    } catch (err) {
+      console.error("Status update failed", err);
+    }
+  };
+
+
+  
+
+  const filtered = orders.filter((o) => {
+  if (!search) return true;
+
+  const name = (o.patient?.name || "").toLowerCase();
+  const orderId = (o.orderId || "").toLowerCase();
+  const query = search.toLowerCase();
+
+  return name.includes(query) || orderId.includes(query);
+});
+
+  const statusColor = (status) => {
+    if (status === "Created") return "#F59E0B";
+    if (status === "Processing") return "#3B82F6";
+    if (status === "Packed") return "#8B5CF6";
+    if (status === "Shipped") return "#10B981";
+    if (status === "Delivered") return "#16A34A";
+    return "#CBD5F5";
+  };
+
+  
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <h2 style={{ fontSize: 22, fontWeight: 700 }}>
+        Order & Delivery Management
+      </h2>
+
+      {/* SEARCH */}
+
+      <div style={searchBox}>
+        <FaSearch size={14} color="#64748B" />
+        <input
+          placeholder="Search orders..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={searchInput}
+        />
+      </div>
+
+      {/* TABLE */}
+
+      <Card
+        ch={
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={thead}>
+                  <th style={th}>Order ID</th>
+                  <th style={th}>Customer</th>
+                  <th style={th}>Order Date</th>
+                  <th style={th}>Price</th>
+                  <th style={th}>Status</th>
+                  <th style={th}>Payment</th>
+                  <th style={th}>Action</th>
+                </tr>
+              </thead>
+
+              <tbody>
+  {loading ? (
+    <tr>
+      <td colSpan="7" style={{ textAlign: "center", padding: 20 }}>
+        Loading orders...
+      </td>
+    </tr>
+  ) : filtered.length === 0 ? (
+    <tr>
+      <td colSpan="7" style={{ textAlign: "center", padding: 20 }}>
+        No orders found
+      </td>
+    </tr>
+  ) : (
+    filtered.map((o, i) => (
+      <tr
+        key={o._id}
+        style={{
+          background: i % 2 === 0 ? "#fff" : "#F8FAFC",
+        }}
+      >
+        <td style={td}>{o.orderId}</td>
+
+        <td style={td}>{o.patient?.name || "Unknown"}</td>
+
+        <td style={td}>
+          {o.createdAt
+            ? new Date(o.createdAt).toLocaleDateString()
+            : "-"}
+        </td>
+
+        <td style={td}>₹{o.totalAmount || 0}</td>
+
+        <td style={td}>
+          <span
+            style={{
+              background: statusColor(o.orderStatus),
+              color: "#fff",
+              padding: "4px 10px",
+              borderRadius: 20,
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            {o.orderStatus || "Created"}
+          </span>
+        </td>
+
+        <td style={td}>
+          <span style={paidBadge}>
+            {o.paymentStatus || "Pending"}
+          </span>
+        </td>
+
+        <td style={td}>
+          <button
+            style={viewBtn}
+            onClick={() => setSelectedOrder(o)}
+          >
+            <FaEye />
+          </button>
+        </td>
+      </tr>
+    ))
+  )}
+</tbody>
+            </table>
+          </div>
+        }
+      />
+
+      {/* ORDER DETAILS MODAL */}
+
+      {selectedOrder && (
+        <div style={modalOverlay}>
+          <div style={modalBox}>
+            <div style={modalHeader}>
+ <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>
+  Order Details
+</h2>
+
+  <button
+    style={closeBtn}
+    onClick={() => setSelectedOrder(null)}
+    onMouseEnter={(e) => (e.target.style.background = "#E2E8F0")}
+onMouseLeave={(e) => (e.target.style.background = "#F1F5F9")}
+  >
+    ✕
+  </button>
+</div>
+
+            {/* CUSTOMER DETAILS */}
+
+            <div style={customerGrid}>
+              <Info label="Customer Name" value={selectedOrder.patient?.name} />
+
+              <Info
+                label="Mobile Number"
+                value={selectedOrder.patient?.phone || "-"}
+              />
+
+              <Info
+                label="Email"
+                value={selectedOrder.patient?.email || "-"}
+              />
+
+              <Info
+                label="Order Date"
+                value={new Date(
+                  selectedOrder.createdAt
+                ).toLocaleDateString()}
+              />
+
+              <Info
+                label="Address"
+                value={
+                  selectedOrder.patient?.address ||
+                  "Address not available"
+                }
+                full
+              />
+            </div>
+
+            {/* LINKED PRESCRIPTION */}
+
+            <div style={detailsGrid}>
+              <div style={infoCard}>
+              <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>
+  Linked Prescription
+</h4>
+
+                <div style={{ marginTop: 10 }}>
+                  <strong>
+                    {selectedOrder.prescription?.rxId}
+                  </strong>
+
+                  <div style={{marginTop:"5px"}}>
+                    Doctor: {selectedOrder.prescription?.doctor}
+                  </div>
+                </div>
+              </div>
+
+              {/* DELIVERY STATUS */}
+
+              <div style={infoCard}>
+                <h4>Delivery Status</h4>
+
+                <select
+                  value={selectedOrder.orderStatus}
+                  style={selectStyle}
+                  onChange={(e) => {
+  const newStatus = e.target.value;
+
+  setSelectedOrder({
+    ...selectedOrder,
+    orderStatus: newStatus,
+  });
+
+  updateStatus(selectedOrder._id, newStatus);
+}}
+                >
+                  <option>Created</option>
+                  <option>Processing</option>
+                  <option>Packed</option>
+                  <option>Shipped</option>
+                  <option>Delivered</option>
+                </select>
+              </div>
+            </div>
+
+            {/* MEDICINE TABLE */}
+
+            <h4 style={{ marginTop: 10 }}>Ordered Medicines</h4>
+
+            <table style={medicineTable}>
+              <thead>
+                <tr style={thead}>
+                  <th style={th}>Medicine</th>
+                  <th style={th}>Days</th>
+                  <th style={th}>M</th>
+                  <th style={th}>A</th>
+                  <th style={th}>N</th>
+                  <th style={th}>Daily</th>
+                  <th style={th}>Qty</th>
+                  <th style={th}>Price</th>
+                  <th style={th}>Subtotal</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {selectedOrder.prescription?.meds?.length ? (
+  selectedOrder.prescription.meds.map((m) => {
+    const daily =
+      (m.freq?.m || 0) +
+      (m.freq?.a || 0) +
+      (m.freq?.n || 0);
+
+    return (
+      <tr key={m._id}>
+        <td style={td}>{m.medicine?.name}</td>
+        <td style={td}>{m.duration} days</td>
+        <td style={td}>{m.freq?.m || 0}</td>
+        <td style={td}>{m.freq?.a || 0}</td>
+        <td style={td}>{m.freq?.n || 0}</td>
+        <td style={td}>{daily}</td>
+        <td style={td}>{m.qty}</td>
+        <td style={td}>₹{m.price}</td>
+        <td style={td}>₹{m.subtotal}</td>
+      </tr>
+    );
+  })
+) : (
+  <tr>
+    <td colSpan="9" style={{ textAlign: "center" }}>
+      No medicines found
+    </td>
+  </tr>
+)}
+              </tbody>
+            </table>
+
+            {/* BILLING */}
+
+            <div style={billingGrid}>
+              <Summary
+                label="Subtotal"
+                value={selectedOrder.prescription?.subtotal}
+              />
+
+              <Summary
+                label="GST"
+                value={selectedOrder.prescription?.gst}
+              />
+
+              <Summary
+                label="Discount"
+                value={selectedOrder.prescription?.discount}
+              />
+
+              <Summary
+                label="Total Amount"
+                value={selectedOrder.totalAmount}
+                highlight
+              />
+            </div>
+
+            {/* <div style={{ marginTop: 20 }}>
+              <Btn
+                ch="Close"
+                v="ghost"
+                onClick={() => setSelectedOrder(null)}
+              />
+            </div> */}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* COMPONENTS */
+
+const Info = ({ label, value, full }) => (
+  <div style={{ gridColumn: full ? "span 3" : "span 1" }}>
+    <div
+      style={{
+        fontSize: 12,
+        color: "#64748B",
+        fontWeight: 500,
+        marginBottom: 4
+      }}
+    >
+      {label}
+    </div>
+
+    <div
+      style={{
+        fontWeight: 600,
+        fontSize: 15,
+        color: "#111827"
+      }}
+    >
+      {value || "-"}
+    </div>
+  </div>
+);
+
+const Summary = ({ label, value, highlight }) => (
+  <div
+    style={{
+      background: "#F8FAFC",
+      padding: 14,
+      borderRadius: 8,
+      border: highlight
+        ? "1px solid #2563EB"
+        : "1px solid #E2E8F0",
+    }}
+  >
+    <div style={{ fontSize: 12, color: "#64748B" }}>{label}</div>
+
+    <div style={{ fontWeight: 700, fontSize: 18 }}>
+      ₹{value}
+    </div>
+  </div>
+);
+
+/* STYLES */
+
+const modalHeader = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  paddingBottom: 14,
+  borderBottom: "1px solid #E2E8F0",
+};
+
+const closeBtn = {
+  background: "#F1F5F9",
+  border: "none",
+  borderRadius: "50%",
+  width: 32,
+  height: 32,
+  fontSize: 16,
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontWeight: 700,
+};
+
+const searchBox = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "10px 14px",
+  border: "1px solid #E2E8F0",
+  borderRadius: 8,
+  background: "#fff",
+  width: 300,
+};
+
+const searchInput = {
+  border: "none",
+  outline: "none",
+  width: "100%",
+};
+
+const thead = {
+  background: "#06549d",
+  color: "#fff",
+};
+
+const th = {
+  padding: "14px",
+  textAlign: "left",
+};
+
+const td = {
+  padding: "14px",
+  borderBottom: "1px solid #E2E8F0",
+};
+
+const paidBadge = {
+  background: "#16A34A",
+  color: "#fff",
+  padding: "4px 10px",
+  borderRadius: 20,
+  fontSize: 12,
+  fontWeight: 600,
+};
+
+const viewBtn = {
+  background: "#1D4ED8",
+  color: "#fff",
+  border: "none",
+  padding: "6px 8px",
+  borderRadius: 6,
+  cursor: "pointer",
+};
+
+const modalOverlay = {
+  position: "fixed",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  background: "rgba(0,0,0,0.4)",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  zIndex: 1000,
+};
+
+const modalBox = {
+  background: "#ffffff",
+  padding: 32,
+  borderRadius: 14,
+  width: 980,
+  maxHeight: "92vh",
+  overflowY: "auto",
+  boxShadow: "0 25px 60px rgba(0,0,0,0.15)",
+  display: "flex",
+  flexDirection: "column",
+  gap: 24
+};
+
+const detailsGrid = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: 20,
+};
+
+const infoCard = {
+  border: "1px solid #E2E8F0",
+  padding: 18,
+  borderRadius: 12,
+  background: "#F9FAFB",
+  display: "flex",
+  flexDirection: "column",
+  gap: 8
+};
+
+const selectStyle = {
+  width: "100%",
+  padding: 8,
+  borderRadius: 6,
+  border: "1px solid #CBD5E1",
+};
+
+const customerGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(4, 1fr)",
+  gap: 22,
+  marginTop: 5,
+  paddingBottom: 8,
+};
+
+const medicineTable = {
+  width: "100%",
+  borderCollapse: "collapse",
+  marginTop: 5,
+};
+
+const billingGrid = {
+  marginTop: 20,
+  display: "grid",
+  gridTemplateColumns: "repeat(4,1fr)",
+  gap: 12,
+};
+
+export default OrdersView;
