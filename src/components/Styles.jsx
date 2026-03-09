@@ -134,6 +134,7 @@ export const PATHS = {
   unlock: "M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z",
   forecast: "M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z",
   orders: "M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 7h11M9 20a1 1 0 100 2 1 1 0 000-2zm10 0a1 1 0 100 2 1 1 0 000-2z",
+  billing: "M6 2h12a2 2 0 012 2v18l-3-2-3 2-3-2-3 2-3-2-2 1V4a2 2 0 012-2zm3 6h6m-6 4h6m-6 4h4"
 };
 
 /* ─── ATOMS ───────────────────────────────────────────────────────────── */
@@ -145,7 +146,7 @@ export const Card = ({ ch, sx = {}, hover }) => (
       borderRadius: 14,
       boxShadow: "0 1px 12px rgba(17,24,39,.07)",
       border: `1px solid ${C.border}`,
-      padding: 22,
+      padding: 10,
       transition: "all .2s",
       ...sx,
     }}

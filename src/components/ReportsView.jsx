@@ -1,0 +1,487 @@
+import { useEffect, useState } from "react";
+import API from "../api";
+
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar
+} from "recharts";
+
+
+const ReportsView = () => {
+
+  const [tab, setTab] = useState("sales");
+
+  const [salesData, setSalesData] = useState([]);
+  const [ordersData, setOrdersData] = useState([]);
+  const [revenueData, setRevenueData] = useState([]);
+const [ordersTable, setOrdersTable] = useState([]);
+const [inventoryData, setInventoryData] = useState([]);
+  const [summary, setSummary] = useState({});
+
+  useEffect(() => {
+    fetchReports();
+  }, []);
+
+const fetchReports = async () => {
+  try {
+
+    const salesRes = await API.get("/reports/sales");
+    const ordersRes = await API.get("/reports/orders");
+    const revenueRes = await API.get("/reports/revenue");
+    const inventoryRes = await API.get("/reports/inventory");
+
+    /* ======================
+       SALES TREND
+    ====================== */
+
+    const salesTrend = (salesRes.data.trend || []).map((r) => ({
+      date: r._id,
+      sales: r.sales,
+      orders: r.orders
+    }));
+
+
+    /* ======================
+       ORDERS TREND
+    ====================== */
+
+    const ordersTrend = (ordersRes.data.trend || []).map((r) => ({
+      date: r._id,
+      orders: r.orders,
+      amount: r.amount
+    }));
+
+
+    /* ======================
+       REVENUE TREND
+    ====================== */
+
+    const revenueTrend = (revenueRes.data.trend || []).map((r) => ({
+      date: r._id,
+      revenue: r.revenue,
+      orders: r.orders
+    }));
+
+
+    /* ======================
+       SET STATE
+    ====================== */
+
+    setSalesData(salesTrend);
+    setOrdersData(ordersTrend);
+    setRevenueData(revenueTrend);
+
+    /* SUMMARY CARDS */
+
+    setSummary({
+      sales: salesRes.data.summary || {},
+      orders: ordersRes.data.summary || {},
+      revenue: revenueRes.data.summary || {},
+      inventory: inventoryRes.data.summary || {}
+    });
+
+    /* ORDERS TABLE */
+
+    setOrdersTable(ordersRes.data.table || []);
+
+    /* INVENTORY TABLE */
+
+    setInventoryData(inventoryRes.data.items || []);
+
+  } catch (err) {
+    console.error("Failed to load reports", err);
+  }
+};
+
+  return (
+    <div style={container}>
+
+      {/* HEADER */}
+
+      <div style={header}>
+        <h2>Reports Dashboard</h2>
+      </div>
+
+
+      {/* TABS */}
+
+      <div style={tabs}>
+
+        <Tab label="Sales" active={tab === "sales"} onClick={() => setTab("sales")} />
+        <Tab label="Inventory" active={tab === "inventory"} onClick={() => setTab("inventory")} />
+        <Tab label="Orders" active={tab === "orders"} onClick={() => setTab("orders")} />
+        <Tab label="Revenue" active={tab === "revenue"} onClick={() => setTab("revenue")} />
+
+      </div>
+
+
+      {/* SALES */}
+
+      {tab === "sales" && (
+        <>
+          <SummaryCards
+            data={[
+              { label: "Total Sales", value: summary.sales?.totalSales || 0 },
+              { label: "Orders Sold", value: summary.sales?.orders || 0 },
+              { label: "Avg Order Value", value: summary.sales?.avgOrder || 0 }
+            ]}
+          />
+
+          <Chart title="Sales Trend" data={salesData} dataKey="sales" />
+
+          <Table
+            columns={["Date", "Orders", "Sales"]}
+            data={salesData}
+            map={(r) => [
+              r.date,
+              r.orders,
+              `₹${r.sales}`
+            ]}
+          />
+        </>
+      )}
+
+
+      {/* INVENTORY */}
+
+      {tab === "inventory" && (
+        <>
+          <SummaryCards
+            data={[
+              { label: "Total Medicines", value: summary.inventory?.total || 0 },
+              { label: "Low Stock", value: summary.inventory?.lowStock || 0 }
+            ]}
+          />
+
+         <InventoryChart data={inventoryData} />
+
+          <Table
+            columns={[
+              "Medicine",
+              "Category",
+              "Stock",
+              "Min Stock",
+              "Status"
+            ]}
+            data={inventoryData}
+            map={(r) => [
+              r.name,
+              r.category,
+              r.stock,
+              r.minStock,
+              r.stock <= r.minStock ? "Low Stock" : "In Stock"
+            ]}
+          />
+        </>
+      )}
+
+
+      {/* ORDERS */}
+
+      {tab === "orders" && (
+        <>
+          <SummaryCards
+            data={[
+              { label: "Total Orders", value: summary.orders?.total || 0 },
+              { label: "Completed", value: summary.orders?.completed || 0 },
+              { label: "Pending", value: summary.orders?.pending || 0 },
+              { label: "Cancelled", value: summary.orders?.cancelled || 0 }
+            ]}
+          />
+
+         <Chart title="Orders Trend" data={ordersData} dataKey="orders" />
+
+          <Table
+            columns={[
+              "Order ID",
+              "Customer",
+              "Date",
+              "Amount",
+              "Status"
+            ]}
+            data={ordersTable}
+            map={(r) => [
+              r.orderId,
+              r.customer,
+              r.date,
+              `₹${r.amount}`,
+              r.status
+            ]}
+          />
+        </>
+      )}
+
+
+      {/* REVENUE */}
+
+      {tab === "revenue" && (
+        <>
+          <SummaryCards
+            data={[
+              { label: "Total Revenue", value: summary.revenue?.total || 0 },
+              { label: "Paid Orders", value: summary.revenue?.paid || 0 },
+              { label: "Avg Order", value: summary.revenue?.avg || 0 }
+            ]}
+          />
+
+          <Chart title="Revenue Trend" data={revenueData} dataKey="revenue" />
+
+          <Table
+            columns={[
+              "Date",
+              "Paid Orders",
+              "Revenue"
+            ]}
+            data={revenueData}
+            map={(r) => [
+              r.date,
+              r.orders,
+              `₹${r.revenue}`
+            ]}
+          />
+        </>
+      )}
+
+    </div>
+  );
+};
+
+
+const Tab = ({ label, active, onClick }) => (
+  <button
+    onClick={onClick}
+    style={{
+      padding: "10px 18px",
+      border: "none",
+      borderBottom: active ? "3px solid #2563EB" : "3px solid transparent",
+      background: "transparent",
+      fontWeight: 600,
+      cursor: "pointer"
+    }}
+  >
+    {label}
+  </button>
+);
+
+
+const SummaryCards = ({ data }) => (
+  <div style={cards}>
+    {data.map((c, i) => (
+      <div key={i} style={card}>
+        <div style={{ fontSize: 22, fontWeight: 700 }}>
+          {typeof c.value === "number" ? `₹${c.value}` : c.value}
+        </div>
+        <div style={{ color: "#6B7280" }}>{c.label}</div>
+      </div>
+    ))}
+  </div>
+);
+
+
+const InventoryChart = ({ data }) => (
+  <div style={chartCard}>
+    <h3 style={{ marginBottom: 20 }}>Inventory Stock Overview</h3>
+
+    <ResponsiveContainer width="100%" height={340}>
+      <BarChart
+        data={data}
+        barGap={8}
+        barCategoryGap={25}
+      >
+
+        {/* Gradient colors */}
+
+        <defs>
+          <linearGradient id="stockGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2563EB" stopOpacity={0.95}/>
+            <stop offset="100%" stopColor="#60A5FA" stopOpacity={0.7}/>
+          </linearGradient>
+
+          <linearGradient id="minStockGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#EF4444" stopOpacity={0.95}/>
+            <stop offset="100%" stopColor="#F87171" stopOpacity={0.7}/>
+          </linearGradient>
+        </defs>
+
+        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+
+        <XAxis
+          dataKey="name"
+          tick={{ fontSize: 12 }}
+          interval={0}
+        />
+
+        <YAxis allowDecimals={false} />
+
+        <Tooltip
+          cursor={{ fill: "rgba(0,0,0,0.04)" }}
+          contentStyle={{
+            borderRadius: "12px",
+            border: "none",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.12)"
+          }}
+        />
+
+        <Bar
+          dataKey="stock"
+          name="Current Stock"
+          fill="url(#stockGradient)"
+          radius={[8, 8, 0, 0]}
+        />
+
+        <Bar
+          dataKey="minStock"
+          name="Minimum Required"
+          fill="url(#minStockGradient)"
+          radius={[8, 8, 0, 0]}
+        />
+
+      </BarChart>
+    </ResponsiveContainer>
+  </div>
+);
+
+
+const Chart = ({ title, data, dataKey }) => (
+  <div style={chartCard}>
+    <h3>{title}</h3>
+
+    <ResponsiveContainer width="100%" height={320}>
+      <AreaChart data={data}>
+
+        <defs>
+          <linearGradient id="colorTrend" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#2563EB" stopOpacity={0.8}/>
+            <stop offset="95%" stopColor="#2563EB" stopOpacity={0}/>
+          </linearGradient>
+        </defs>
+
+        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb"/>
+
+        <XAxis
+          dataKey="date"
+          tick={{ fontSize: 12 }}
+        />
+
+        <YAxis tick={{ fontSize: 12 }}/>
+
+        <Tooltip
+          contentStyle={{
+            borderRadius: "10px",
+            border: "none",
+            boxShadow: "0 6px 18px rgba(0,0,0,0.1)"
+          }}
+        />
+
+        <Area
+          type="monotone"
+          dataKey={dataKey}
+          stroke="#2563EB"
+          strokeWidth={3}
+          fill="url(#colorTrend)"
+          dot={{ r: 4 }}
+          activeDot={{ r: 7 }}
+        />
+
+      </AreaChart>
+    </ResponsiveContainer>
+  </div>
+);
+
+
+const Table = ({ columns, data, map }) => (
+  <div style={tableBox}>
+    <table style={table}>
+      <thead>
+        <tr>
+          {columns.map((c, i) => (
+            <th key={i} style={th}>{c}</th>
+          ))}
+        </tr>
+      </thead>
+
+      <tbody>
+        {data.map((r, i) => (
+          <tr key={i}>
+            {map(r).map((v, j) => (
+              <td key={j} style={td}>{v}</td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+
+
+const container = {
+  padding: 30,
+  display: "flex",
+  flexDirection: "column",
+  gap: 20
+};
+
+const header = {
+  display: "flex",
+  justifyContent: "space-between"
+};
+
+const tabs = {
+  display: "flex",
+  gap: 20,
+  borderBottom: "1px solid #E5E7EB"
+};
+
+const cards = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))",
+  gap: 16
+};
+
+const card = {
+  background: "#fff",
+  padding: 20,
+  borderRadius: 10,
+  boxShadow: "0 6px 18px rgba(0,0,0,0.05)"
+};
+
+const chartCard = {
+  background: "#fff",
+  padding: 20,
+  borderRadius: 10,
+  boxShadow: "0 6px 18px rgba(0,0,0,0.05)"
+};
+
+const tableBox = {
+  background: "#fff",
+  padding: 20,
+  borderRadius: 10,
+  boxShadow: "0 6px 18px rgba(0,0,0,0.05)"
+};
+
+const table = {
+  width: "100%",
+  borderCollapse: "collapse"
+};
+
+const th = {
+  padding: 12,
+  borderBottom: "1px solid #E5E7EB",
+  textAlign: "left"
+};
+
+const td = {
+  padding: 12,
+  borderBottom: "1px solid #F3F4F6"
+};
+
+export default ReportsView;

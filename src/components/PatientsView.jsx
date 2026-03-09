@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import API from "../api";
-import { C, Card, Btn, Inp, Field, Modal } from "./Styles";
+import { Card, Btn, Inp, Field, Modal } from "./Styles";
 
 const PatientsView = () => {
+
   const [patients, setPatients] = useState([]);
   const [prescriptions, setPrescriptions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -82,6 +83,7 @@ const PatientsView = () => {
 
       setEditPatient(null);
       fetchPatients();
+
     } catch (err) {
       console.error("Save failed", err);
     }
@@ -129,7 +131,6 @@ const PatientsView = () => {
                   background: "#fff",
                 }}
               >
-
                 <thead>
                   <tr style={{ background: "#06549d", color: "#fff" }}>
                     {[
@@ -138,7 +139,6 @@ const PatientsView = () => {
                       "Phone",
                       "Email",
                       "Address",
-                      // "Condition",
                       "Total Payments",
                       "Products",
                       "Actions",
@@ -160,17 +160,13 @@ const PatientsView = () => {
                       <tr
                         key={p._id}
                         style={{
-                          background:
-                            i % 2 === 0 ? "#fff" : "#F8FAFC",
+                          background: i % 2 === 0 ? "#fff" : "#F8FAFC",
                         }}
                       >
 
                         <td style={tdStyle}>{p.name}</td>
-
                         <td style={tdStyle}>{p.age}</td>
-
                         <td style={tdStyle}>{p.phone}</td>
-
                         <td style={tdStyle}>{p.email || "-"}</td>
 
                         <td style={tdStyle}>
@@ -178,8 +174,6 @@ const PatientsView = () => {
                             ? `${p.address}, ${p.city || ""} ${p.pincode || ""}`
                             : "-"}
                         </td>
-
-                        {/* <td style={tdStyle}>{p.condition}</td> */}
 
                         <td style={{ ...tdStyle, textAlign: "right" }}>
                           ₹{stats.totalPaid.toLocaleString("en-IN")}
@@ -213,157 +207,170 @@ const PatientsView = () => {
 
                   {patients.length === 0 && (
                     <tr>
-                      <td colSpan="9" style={emptyStyle}>
+                      <td colSpan="8" style={emptyStyle}>
                         No patients found
                       </td>
                     </tr>
                   )}
 
                 </tbody>
-
               </table>
             </div>
           )
         }
       />
 
-      {/* ADD / EDIT PATIENT MODAL */}
+      {/* PROFESSIONAL ADD / EDIT FORM */}
 
       {editPatient && (
         <Modal
           title={editPatient._id ? "Edit Patient" : "Add Patient"}
-          w={520}
+          w={650}
           onClose={() => setEditPatient(null)}
           ch={
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
-              <Field
-                label="Name"
-                ch={
-                  <Inp
-                    value={editPatient.name}
-                    onChange={(e) =>
-                      setEditPatient({
-                        ...editPatient,
-                        name: e.target.value,
-                      })
-                    }
-                  />
-                }
-              />
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-              <Field
-                label="Age"
-                ch={
-                  <Inp
-                    type="number"
-                    value={editPatient.age}
-                    onChange={(e) =>
-                      setEditPatient({
-                        ...editPatient,
-                        age: e.target.value,
-                      })
-                    }
-                  />
-                }
-              />
+              <div style={{ fontWeight: 600, color: "#64748B" }}>
+                Patient Information
+              </div>
 
-              <Field
-                label="Phone"
-                ch={
-                  <Inp
-                    value={editPatient.phone}
-                    onChange={(e) =>
-                      setEditPatient({
-                        ...editPatient,
-                        phone: e.target.value,
-                      })
-                    }
-                  />
-                }
-              />
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 16,
+                }}
+              >
 
-              <Field
-                label="Email"
-                ch={
-                  <Inp
-                    value={editPatient.email || ""}
-                    onChange={(e) =>
-                      setEditPatient({
-                        ...editPatient,
-                        email: e.target.value,
-                      })
-                    }
-                  />
-                }
-              />
+                <Field
+                  label="Full Name"
+                  ch={
+                    <Inp
+                      placeholder="Enter patient name"
+                      value={editPatient.name}
+                      onChange={(e) =>
+                        setEditPatient({ ...editPatient, name: e.target.value })
+                      }
+                    />
+                  }
+                />
 
-              <Field
-                label="Address"
-                ch={
-                  <Inp
-                    value={editPatient.address || ""}
-                    onChange={(e) =>
-                      setEditPatient({
-                        ...editPatient,
-                        address: e.target.value,
-                      })
-                    }
-                  />
-                }
-              />
+                <Field
+                  label="Age"
+                  ch={
+                    <Inp
+                      type="number"
+                      placeholder="Age"
+                      value={editPatient.age}
+                      onChange={(e) =>
+                        setEditPatient({ ...editPatient, age: e.target.value })
+                      }
+                    />
+                  }
+                />
 
-              <Field
-                label="City"
-                ch={
-                  <Inp
-                    value={editPatient.city || ""}
-                    onChange={(e) =>
-                      setEditPatient({
-                        ...editPatient,
-                        city: e.target.value,
-                      })
-                    }
-                  />
-                }
-              />
+                <Field
+                  label="Phone Number"
+                  ch={
+                    <Inp
+                      placeholder="10 digit phone"
+                      value={editPatient.phone}
+                      onChange={(e) =>
+                        setEditPatient({ ...editPatient, phone: e.target.value })
+                      }
+                    />
+                  }
+                />
 
-              <Field
-                label="Pincode"
-                ch={
-                  <Inp
-                    value={editPatient.pincode || ""}
-                    onChange={(e) =>
-                      setEditPatient({
-                        ...editPatient,
-                        pincode: e.target.value,
-                      })
-                    }
-                  />
-                }
-              />
+                <Field
+                  label="Email"
+                  ch={
+                    <Inp
+                      placeholder="example@email.com"
+                      value={editPatient.email || ""}
+                      onChange={(e) =>
+                        setEditPatient({ ...editPatient, email: e.target.value })
+                      }
+                    />
+                  }
+                />
 
-              <Field
-                label="Condition"
-                ch={
-                  <Inp
-                    value={editPatient.condition || ""}
-                    onChange={(e) =>
-                      setEditPatient({
-                        ...editPatient,
-                        condition: e.target.value,
-                      })
-                    }
-                  />
-                }
-              />
+              </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <div style={{ fontWeight: 600, color: "#64748B" }}>
+                Address Details
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 16,
+                }}
+              >
+
+                <Field
+                  label="Address"
+                  ch={
+                    <Inp
+                      placeholder="Street address"
+                      value={editPatient.address || ""}
+                      onChange={(e) =>
+                        setEditPatient({ ...editPatient, address: e.target.value })
+                      }
+                    />
+                  }
+                />
+
+                <Field
+                  label="City"
+                  ch={
+                    <Inp
+                      placeholder="City"
+                      value={editPatient.city || ""}
+                      onChange={(e) =>
+                        setEditPatient({ ...editPatient, city: e.target.value })
+                      }
+                    />
+                  }
+                />
+
+                <Field
+                  label="Pincode"
+                  ch={
+                    <Inp
+                      placeholder="Postal code"
+                      value={editPatient.pincode || ""}
+                      onChange={(e) =>
+                        setEditPatient({ ...editPatient, pincode: e.target.value })
+                      }
+                    />
+                  }
+                />
+
+                <Field
+                  label="Medical Condition"
+                  ch={
+                    <Inp
+                      placeholder="Optional"
+                      value={editPatient.condition || ""}
+                      onChange={(e) =>
+                        setEditPatient({ ...editPatient, condition: e.target.value })
+                      }
+                    />
+                  }
+                />
+
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
                 <Btn ch="Cancel" v="ghost" onClick={() => setEditPatient(null)} />
-                <Btn ch="Save" onClick={savePatient} />
+                <Btn ch="Save Patient" onClick={savePatient} />
               </div>
 
             </div>
+
           }
         />
       )}
@@ -372,7 +379,7 @@ const PatientsView = () => {
   );
 };
 
-/* STYLES */
+/* TABLE STYLES */
 
 const thStyle = {
   padding: 14,

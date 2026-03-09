@@ -12,6 +12,9 @@ import RxView from "./components/Prescriptions";
 import PatientsView from "./components/PatientsView";
 import InvView from "./components/Inventory";
 import OrdersView from "./components/OrdersView";
+import BillingInvoicing from "./components/BillingInvoicing";
+import InvoiceView from "./components/InvoiceView";
+import ReportsView from "./components/ReportsView";
 
 /* SIDEBAR */
 
@@ -191,7 +194,19 @@ const critStock = meds.filter((m) => m.stock <= m.minStock).length;
       icon: "orders",
       path: "/orders",
     },
+ {
+      id: "billing",
+      l: "Billing",
+      icon: "billing",
+      path: "/billing",
+    },
 
+    {
+      id: "reports",
+      l: "Reports",
+      icon: "billing",
+      path: "/reports",
+    },
   ].filter(
     (n) =>
       ROLES_CFG[currentRole]?.includes(n.id) ||
@@ -296,6 +311,14 @@ const critStock = meds.filter((m) => m.stock <= m.minStock).length;
  path="/orders"
  element={<OrdersView />}
 />
+
+             <Route
+                path="/billing"
+                element={<BillingInvoicing rx={rx} />}
+              />
+            <Route path="/invoice/:id" element={<InvoiceView />} />
+
+            <Route path="/reports" element={<ReportsView />} />
 
             </Routes>
 

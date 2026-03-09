@@ -501,7 +501,7 @@ const markPaid = async (id) => {
               {/* TABLE */}
               <div style={{ overflowX: "auto" }}>
 
-                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+                {/* <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
     <span style={{ fontSize: 13 }}>Columns:</span>
 
@@ -522,7 +522,7 @@ const markPaid = async (id) => {
       <option value={9}>All</option>
     </select>
   </div>
-</div>
+</div> */}
                 <table
                   style={{
                     width: "100%",
@@ -532,7 +532,7 @@ const markPaid = async (id) => {
                   }}
                 >
                   <thead>
-                    <tr style={{ background: "#111827", color: "#fff" }}>
+                    <tr style={{ background: "#06549d", color: "#fff" }}>
                       <th style={thLeft}>Medicine</th>
                       <th style={thCenter}>Days</th>
                       <th style={thCenter}>M</th>
@@ -586,7 +586,7 @@ const markPaid = async (id) => {
                 <SummaryBox label="Total" value={viewRx.total} highlight />
               </div>
 
-              <Btn ch="Close" onClick={() => setViewRx(null)} />
+              {/* <Btn ch="Close" onClick={() => setViewRx(null)} /> */}
             </div>
           }
         />
