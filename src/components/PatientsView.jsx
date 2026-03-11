@@ -8,6 +8,9 @@ const PatientsView = () => {
   const [prescriptions, setPrescriptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editPatient, setEditPatient] = useState(null);
+const [currentPage, setCurrentPage] = useState(1);
+const rowsPerPage = 5;
+const [visibleCols, setVisibleCols] = useState(8);
 
   useEffect(() => {
     fetchPatients();
@@ -37,6 +40,13 @@ const PatientsView = () => {
     }
   };
 
+  const totalPages = Math.ceil(patients.length / rowsPerPage);
+
+const paginatedPatients = patients.slice(
+  (currentPage - 1) * rowsPerPage,
+  currentPage * rowsPerPage
+);
+
   /* PATIENT STATS */
 
   const patientStats = (patientId) => {
@@ -58,6 +68,9 @@ const PatientsView = () => {
     return { totalPaid, totalProducts };
   };
 
+  useEffect(() => {
+  setCurrentPage(1);
+}, [patients]);
   /* DELETE PATIENT */
 
   const deletePatient = async (id) => {
@@ -89,8 +102,23 @@ const PatientsView = () => {
     }
   };
 
+  useEffect(() => {
+  const table = document.querySelector("table");
+  if (!table) return;
+
+  const rows = table.querySelectorAll("tr");
+
+  rows.forEach((row) => {
+    const cells = row.children;
+
+    for (let i = 0; i < cells.length; i++) {
+      cells[i].style.display = i < visibleCols ? "" : "none";
+    }
+  });
+}, [visibleCols, paginatedPatients]);
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
       {/* HEADER */}
 
@@ -109,6 +137,7 @@ const PatientsView = () => {
               email: "",
               address: "",
               city: "",
+               state: "",
               pincode: "",
               condition: "",
             })
@@ -118,12 +147,71 @@ const PatientsView = () => {
 
       {/* TABLE */}
 
+
+
+
+<div
+  style={{
+    display: "flex",
+    justifyContent: "flex-end",
+   
+  }}
+>
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      background: "#F9FAFB",
+      border: "1px solid #E5E7EB",
+      padding: "6px 12px",
+      borderRadius: 8,
+      boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+    }}
+  >
+    <span
+      style={{
+        fontSize: 13,
+        fontWeight: 600,
+        color: "#374151",
+      }}
+    >
+      Columns
+    </span>
+
+    <select
+      value={visibleCols}
+      onChange={(e) => setVisibleCols(Number(e.target.value))}
+      style={{
+        padding: "6px 28px 6px 10px",
+        borderRadius: 6,
+        border: "1px solid #D1D5DB",
+        fontSize: 13,
+        background: "#fff",
+        color: "#111827",
+        cursor: "pointer",
+        outline: "none",
+      }}
+    >
+      <option value={4}>4 Columns</option>
+      <option value={6}>6 Columns</option>
+      <option value={8}>8 Columns</option>
+      <option value={9}>All Columns</option>
+    </select>
+  </div>
+</div>
       <Card
         ch={
           loading ? (
             <div style={{ padding: 20 }}>Loading...</div>
           ) : (
+
+            
             <div style={{ overflowX: "auto" }}>
+              
+
+
+              
               <table
                 style={{
                   width: "100%",
@@ -139,6 +227,7 @@ const PatientsView = () => {
                       "Phone",
                       "Email",
                       "Address",
+                      "Condition",
                       "Total Payments",
                       "Products",
                       "Actions",
@@ -152,7 +241,7 @@ const PatientsView = () => {
 
                 <tbody>
 
-                  {patients.map((p, i) => {
+                  {paginatedPatients.map((p,i) => {
 
                     const stats = patientStats(p._id);
 
@@ -171,15 +260,18 @@ const PatientsView = () => {
 
                         <td style={tdStyle}>
                           {p.address
-                            ? `${p.address}, ${p.city || ""} ${p.pincode || ""}`
+                            ? `${p.address}, ${p.city || ""} ${p.state || ""} ${p.pincode || ""}`
                             : "-"}
                         </td>
+                        <td style={tdStyle}>
+  {p.condition || "-"}
+</td>
 
-                        <td style={{ ...tdStyle, textAlign: "right" }}>
+                        <td style={{ ...tdStyle, textAlign: "center" }}>
                           ₹{stats.totalPaid.toLocaleString("en-IN")}
                         </td>
 
-                        <td style={{ ...tdStyle, textAlign: "right" }}>
+                        <td style={{ ...tdStyle, textAlign: "center" }}>
                           {stats.totalProducts}
                         </td>
 
@@ -207,7 +299,7 @@ const PatientsView = () => {
 
                   {patients.length === 0 && (
                     <tr>
-                      <td colSpan="8" style={emptyStyle}>
+                      <td colSpan="9" style={emptyStyle}>
                         No patients found
                       </td>
                     </tr>
@@ -335,6 +427,18 @@ const PatientsView = () => {
                     />
                   }
                 />
+                <Field
+  label="State"
+  ch={
+    <Inp
+      placeholder="State"
+      value={editPatient.state || ""}
+      onChange={(e) =>
+        setEditPatient({ ...editPatient, state: e.target.value })
+      }
+    />
+  }
+/>
 
                 <Field
                   label="Pincode"
@@ -374,6 +478,82 @@ const PatientsView = () => {
           }
         />
       )}
+
+
+{totalPages > 1 && (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      gap: 8,
+      marginTop: 5,
+      flexWrap: "wrap",
+    }}
+  >
+    {/* PREV BUTTON */}
+    <button
+      disabled={currentPage === 1}
+      onClick={() => setCurrentPage((p) => p - 1)}
+      style={{
+        padding: "6px 14px",
+        borderRadius: 6,
+        border: "1px solid #D1D5DB",
+        background: currentPage === 1 ? "#F3F4F6" : "#fff",
+        color: "#374151",
+        cursor: currentPage === 1 ? "not-allowed" : "pointer",
+        fontSize: 13,
+        fontWeight: 500,
+      }}
+    >
+      Prev
+    </button>
+
+    {/* PAGE NUMBERS */}
+    {[...Array(totalPages)].map((_, i) => {
+      const page = i + 1;
+
+      return (
+        <button
+          key={page}
+          onClick={() => setCurrentPage(page)}
+          style={{
+            minWidth: 34,
+            height: 34,
+            borderRadius: 6,
+            border: "1px solid #D1D5DB",
+            background: currentPage === page ? "#06549d" : "#fff",
+            color: currentPage === page ? "#fff" : "#111827",
+            cursor: "pointer",
+            fontSize: 13,
+            fontWeight: 600,
+            transition: "all .15s ease",
+          }}
+        >
+          {page}
+        </button>
+      );
+    })}
+
+    {/* NEXT BUTTON */}
+    <button
+      disabled={currentPage === totalPages}
+      onClick={() => setCurrentPage((p) => p + 1)}
+      style={{
+        padding: "6px 14px",
+        borderRadius: 6,
+        border: "1px solid #D1D5DB",
+        background: currentPage === totalPages ? "#F3F4F6" : "#fff",
+        color: "#374151",
+        cursor: currentPage === totalPages ? "not-allowed" : "pointer",
+        fontSize: 13,
+        fontWeight: 500,
+      }}
+    >
+      Next
+    </button>
+  </div>
+)}
 
     </div>
   );

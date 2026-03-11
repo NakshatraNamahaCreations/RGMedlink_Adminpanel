@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import API from "../api";
 import { Card, Btn } from "./Styles";
 import { FaSearch, FaEye } from "react-icons/fa";
@@ -8,6 +8,12 @@ const OrdersView = () => {
   const [search, setSearch] = useState("");
   const [selectedOrder, setSelectedOrder] = useState(null);
 const [loading, setLoading] = useState(true);
+const [currentPage, setCurrentPage] = useState(1);
+const rowsPerPage = 6;
+
+useEffect(() => {
+  setCurrentPage(1);
+}, [search]);
   useEffect(() => {
     fetchOrders();
   }, []);
@@ -36,15 +42,26 @@ const [loading, setLoading] = useState(true);
 
   
 
-  const filtered = orders.filter((o) => {
-  if (!search) return true;
+  const filtered = useMemo(() => {
+  return orders.filter((o) => {
+    if (!search) return true;
 
-  const name = (o.patient?.name || "").toLowerCase();
-  const orderId = (o.orderId || "").toLowerCase();
-  const query = search.toLowerCase();
+    const name = (o.patient?.name || "").toLowerCase();
+    const orderId = (o.orderId || "").toLowerCase();
+    const query = search.toLowerCase();
 
-  return name.includes(query) || orderId.includes(query);
-});
+    return name.includes(query) || orderId.includes(query);
+  });
+}, [orders, search]);
+
+const totalPages = Math.ceil(filtered.length / rowsPerPage);
+
+const paginatedOrders = useMemo(() => {
+  const start = (currentPage - 1) * rowsPerPage;
+  return filtered.slice(start, start + rowsPerPage);
+}, [filtered, currentPage]);
+
+
 
   const statusColor = (status) => {
     if (status === "Created") return "#F59E0B";
@@ -107,7 +124,7 @@ const [loading, setLoading] = useState(true);
       </td>
     </tr>
   ) : (
-    filtered.map((o, i) => (
+    paginatedOrders.map((o, i) => (
       <tr
         key={o._id}
         style={{
@@ -162,7 +179,50 @@ const [loading, setLoading] = useState(true);
             </table>
           </div>
         }
+
+        
       />
+
+      {totalPages > 1 && (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "center",
+      gap: 8,
+      marginTop: 16
+    }}
+  >
+    <button
+      disabled={currentPage === 1}
+      onClick={() => setCurrentPage((p) => p - 1)}
+      style={pageBtn}
+    >
+      Prev
+    </button>
+
+    {[...Array(totalPages)].map((_, i) => (
+      <button
+        key={i}
+        onClick={() => setCurrentPage(i + 1)}
+        style={{
+          ...pageBtn,
+          background: currentPage === i + 1 ? "#06549d" : "#fff",
+          color: currentPage === i + 1 ? "#fff" : "#111"
+        }}
+      >
+        {i + 1}
+      </button>
+    ))}
+
+    <button
+      disabled={currentPage === totalPages}
+      onClick={() => setCurrentPage((p) => p + 1)}
+      style={pageBtn}
+    >
+      Next
+    </button>
+  </div>
+)}
 
       {/* ORDER DETAILS MODAL */}
 
@@ -400,6 +460,15 @@ const Summary = ({ label, value, highlight }) => (
 );
 
 /* STYLES */
+
+const pageBtn = {
+  padding: "6px 12px",
+  borderRadius: 6,
+  border: "1px solid #ddd",
+  background: "#fff",
+  cursor: "pointer",
+  fontWeight: 600
+};
 
 const modalHeader = {
   display: "flex",

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import API from "../api";
 import { Card, Btn } from "./Styles";
 import { useNavigate } from "react-router-dom";
@@ -8,8 +8,18 @@ const BillingInvoiceView = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
 const [selectedInvoice, setSelectedInvoice] = useState(null);
+const [currentPage, setCurrentPage] = useState(1);
+const rowsPerPage = 6;
 
 const navigate = useNavigate();
+
+const totalPages = Math.ceil(orders.length / rowsPerPage);
+
+const paginatedOrders = useMemo(() => {
+  const start = (currentPage - 1) * rowsPerPage;
+  return orders.slice(start, start + rowsPerPage);
+}, [orders, currentPage]);
+
 
   useEffect(() => {
     fetchBilling();
@@ -91,7 +101,7 @@ const navigate = useNavigate();
                 </thead>
 
                 <tbody>
-                  {orders.map((o, i) => (
+                  {paginatedOrders.map((o, i) => (
                     <tr
                       key={o.id}
                       style={{
@@ -186,6 +196,46 @@ const navigate = useNavigate();
           )
         }
       />
+      {totalPages > 1 && (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "center",
+      gap: 8,
+      marginTop: 16
+    }}
+  >
+    <button
+      disabled={currentPage === 1}
+      onClick={() => setCurrentPage((p) => p - 1)}
+      style={pageBtn}
+    >
+      Prev
+    </button>
+
+    {[...Array(totalPages)].map((_, i) => (
+      <button
+        key={i}
+        onClick={() => setCurrentPage(i + 1)}
+        style={{
+          ...pageBtn,
+          background: currentPage === i + 1 ? "#06549d" : "#fff",
+          color: currentPage === i + 1 ? "#fff" : "#111"
+        }}
+      >
+        {i + 1}
+      </button>
+    ))}
+
+    <button
+      disabled={currentPage === totalPages}
+      onClick={() => setCurrentPage((p) => p + 1)}
+      style={pageBtn}
+    >
+      Next
+    </button>
+  </div>
+)}
 
       {/* INVOICE MODAL */}
 
@@ -470,6 +520,15 @@ color:highlight ? "#1D4ED8" : "#111827"
 
 
 /* STYLES */
+
+const pageBtn = {
+  padding: "6px 12px",
+  borderRadius: 6,
+  border: "1px solid #ddd",
+  background: "#fff",
+  cursor: "pointer",
+  fontWeight: 600
+};
 
 const td = {
   padding: 14,

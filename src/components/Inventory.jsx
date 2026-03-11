@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { HiOutlineChartBar } from "react-icons/hi";
 import API from "../api";
 import { C, Card, Btn, Inp, Tag, Modal } from "./Styles";
 import { FaPills, FaBoxes, FaExclamationTriangle } from "react-icons/fa";
@@ -41,10 +42,17 @@ const [dashboard, setDashboard] = useState(null);
 const [showAlert, setShowAlert] = useState(true);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
 const [newCategory, setNewCategory] = useState("");
+const [currentPage, setCurrentPage] = useState(1);
+const rowsPerPage = 6;
+const [visibleCols, setVisibleCols] = useState(11);
 
  useEffect(() => {
   fetchDashboard();
 }, []);
+
+useEffect(() => {
+  setCurrentPage(1);
+}, [search]);
 
   const fetchDashboard = async () => {
   const res = await API.get("/dashboard/summary");
@@ -70,9 +78,18 @@ const [newCategory, setNewCategory] = useState("");
     fetchDashboard();
   };
 
-  const filtered = meds.filter((m) =>
+ const filtered = useMemo(() => {
+  return meds.filter((m) =>
     m.name.toLowerCase().includes(search.toLowerCase())
   );
+}, [meds, search]);
+
+const totalPages = Math.ceil(filtered.length / rowsPerPage);
+
+const paginatedMeds = useMemo(() => {
+  const start = (currentPage - 1) * rowsPerPage;
+  return filtered.slice(start, start + rowsPerPage);
+}, [filtered, currentPage]);
 
   const getStatus = (m) => {
     if (m.stock === 0) return { label: "Out of Stock", color: "#DC2626" };
@@ -84,35 +101,70 @@ const [newCategory, setNewCategory] = useState("");
 const lowStock = dashboard?.lowStockItems || 0;
 const totalStock = meds.reduce((sum, m) => sum + m.stock, 0);
 
+useEffect(() => {
+  const table = document.querySelector("table");
+  if (!table) return;
+
+  const rows = table.querySelectorAll("tr");
+
+  rows.forEach((row) => {
+    const cells = row.children;
+
+    for (let i = 0; i < cells.length; i++) {
+      if (i < visibleCols) {
+        cells[i].style.display = "";
+      } else {
+        cells[i].style.display = "none";
+      }
+    }
+  });
+}, [visibleCols, paginatedMeds]);
+
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
       {dashboard && showAlert && dashboard.criticalStock > 0 && (
 
-<div style={alertContainer}>
+<div style={premiumAlertContainer}>
 
-  <div style={alertLeft}>
+  <div style={alertIconWrap}>
+    <FaExclamationTriangle size={22} color="#DC2626" />
+  </div>
 
-    <FaExclamationTriangle size={20} color="#fff" />
+  <div style={{flex:1}}>
 
-    <div>
+    <div style={alertHeading}>
+      Inventory Risk Detected
+    </div>
 
-      <div style={alertTitle}>
-        Live Inventory Alert — Immediate Action Required
+    <div style={alertDescription}>
+      Immediate attention required for medicines running below safe stock levels.
+    </div>
+
+    <div style={alertStats}>
+
+      <div style={alertStatBox}>
+        <div style={alertStatValue}>{dashboard.criticalStock}</div>
+        <div style={alertStatLabel}>Critical</div>
       </div>
 
-      <div style={alertText}>
-        {dashboard.criticalStock} medicines CRITICAL (stock below minimum) ·
-        {dashboard.lowStockItems} LOW STOCK ·
-        Estimated reorder cost: ₹{dashboard.reorderCost}
+      <div style={alertStatBox}>
+        <div style={alertStatValue}>{dashboard.lowStockItems}</div>
+        <div style={alertStatLabel}>Low Stock</div>
       </div>
+
+      <div style={alertStatBox}>
+  <div style={alertStatValue}>{dashboard.outOfStock || 0}</div>
+  <div style={alertStatLabel}>Out of Stock</div>
+</div>
 
     </div>
 
   </div>
 
   <button
-    style={dismissBtn}
+    style={alertCloseBtn}
     onClick={() => setShowAlert(false)}
   >
     Dismiss
@@ -122,37 +174,6 @@ const totalStock = meds.reduce((sum, m) => sum + m.stock, 0);
 
 )}
 
-    {dashboard && dashboard.criticalStock > 0 && (
-
-  <div style={{
-    background: "linear-gradient(135deg,#DC2626,#991B1B)",
-    color: "#fff",
-    padding: "14px 18px",
-    borderRadius: 10,
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center"
-  }}>
-
-    <div>
-
-      <div style={{fontWeight:700}}>
-        🚨 Live Inventory Alert — Immediate Action Required
-      </div>
-
-      <div style={{fontSize:12,opacity:0.9}}>
-
-        {dashboard.criticalStock} medicines CRITICAL ·
-        {dashboard.lowStockItems} LOW STOCK ·
-        Estimated reorder cost: ₹{dashboard.reorderCost}
-
-      </div>
-
-    </div>
-
-  </div>
-
-)}
 
 
 {dashboard && (
@@ -345,10 +366,47 @@ const totalStock = meds.reduce((sum, m) => sum + m.stock, 0);
       </div>
 
       {/* TABLE */}
+   <div
+  style={{
+    display: "flex",
+    justifyContent: "flex-end",
+  }}
+>
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      background: "#F9FAFB",
+      border: "1px solid #E5E7EB",
+      padding: "6px 12px",
+      borderRadius: 8,
+    }}
+  >
+    <span style={{ fontSize: 13, fontWeight: 600 }}>Columns</span>
 
+    <select
+      value={visibleCols}
+      onChange={(e) => setVisibleCols(Number(e.target.value))}
+      style={{
+        padding: "6px 10px",
+        borderRadius: 6,
+        border: "1px solid #ddd",
+        fontSize: 13,
+      }}
+    >
+      <option value={5}>5 Columns</option>
+      <option value={8}>8 Columns</option>
+      <option value={10}>10 Columns</option>
+      <option value={11}>All Columns</option>
+    </select>
+  </div>
+</div>
    <Card
   ch={
     <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid #E2E8F0" }}>
+
+   
 
       <table
         style={{
@@ -361,38 +419,45 @@ const totalStock = meds.reduce((sum, m) => sum + m.stock, 0);
 
         {/* HEADER */}
 
-        <thead>
-          <tr
-            style={{
-              background: "#0F172A",
-              color: "#fff",
-              fontSize: 13,
-              letterSpacing: 0.3
-            }}
-          >
-            {[
-              "Medicine",
-              "Category",
-              "Price",
-              "Stock",
-              "Min Stock",
-              "📊 30d Demand",
-              "📊 90d Demand",
-              "Status",
-              "Days Until Stockout",
-              "Auto Reorder Qty",
-              "Actions"
-            ].map((head) => (
-              <th key={head} style={th}>{head}</th>
-            ))}
-          </tr>
-        </thead>
+       <thead>
+  <tr
+    style={{
+      background: "#06549d",
+      color: "#fff",
+      fontSize: 13,
+      letterSpacing: 0.3
+    }}
+  >
+    {[
+      "Medicine",
+      "Category",
+      "Price",
+      "Stock",
+      "Min Stock",
+
+      <span style={headerIcon}>
+        <HiOutlineChartBar size={14} /> 30d Demand
+      </span>,
+
+      <span style={headerIcon}>
+        <HiOutlineChartBar size={14} /> 90d Demand
+      </span>,
+
+      "Status",
+      "Days Until Stockout",
+      "Auto Reorder Qty",
+      "Actions"
+    ].map((head, i) => (
+      <th key={i} style={th}>{head}</th>
+    ))}
+  </tr>
+</thead>
 
         {/* BODY */}
 
         <tbody>
 
-          {filtered.map((m, index) => {
+          {paginatedMeds.map((m, index) => {
 
             const status = getStatus(m);
 
@@ -561,6 +626,47 @@ const totalStock = meds.reduce((sum, m) => sum + m.stock, 0);
         </tbody>
 
       </table>
+
+      {totalPages > 1 && (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "center",
+      gap: 8,
+      margin: 10,
+    }}
+  >
+    <button
+      disabled={currentPage === 1}
+      onClick={() => setCurrentPage((p) => p - 1)}
+      style={pageBtn}
+    >
+      Prev
+    </button>
+
+    {[...Array(totalPages)].map((_, i) => (
+      <button
+        key={i}
+        onClick={() => setCurrentPage(i + 1)}
+        style={{
+          ...pageBtn,
+          background: currentPage === i + 1 ? "#06549d" : "#fff",
+          color: currentPage === i + 1 ? "#fff" : "#111",
+        }}
+      >
+        {i + 1}
+      </button>
+    ))}
+
+    <button
+      disabled={currentPage === totalPages}
+      onClick={() => setCurrentPage((p) => p + 1)}
+      style={pageBtn}
+    >
+      Next
+    </button>
+  </div>
+)}
 
     </div>
   }
@@ -792,6 +898,85 @@ const Field = ({ label, value, onChange, type = "text" }) => (
 
 /* STYLES */
 
+
+
+
+const pageBtn = {
+  padding: "6px 12px",
+  borderRadius: 6,
+  border: "1px solid #ddd",
+  background: "#fff",
+  cursor: "pointer",
+  fontWeight: 600,
+};
+
+const premiumAlertContainer = {
+  display: "flex",
+  alignItems: "center",
+  gap: 20,
+  background: "#fff",
+  borderRadius: 14,
+  padding: "20px 22px",
+  border: "1px solid #FECACA",
+  boxShadow: "0 6px 18px rgba(0,0,0,0.06)"
+};
+
+const alertIconWrap = {
+  width: 48,
+  height: 48,
+  borderRadius: 12,
+  background: "#FEE2E2",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center"
+};
+
+const alertHeading = {
+  fontSize: 16,
+  fontWeight: 700,
+  color: "#991B1B",
+  marginBottom: 4
+};
+
+const alertDescription = {
+  fontSize: 13,
+  color: "#6B7280",
+  marginBottom: 12
+};
+
+const alertStats = {
+  display: "flex",
+  gap: 24
+};
+
+const alertStatBox = {
+  display: "flex",
+  flexDirection: "column"
+};
+
+const alertStatValue = {
+  fontSize: 18,
+  fontWeight: 700,
+  color: "#111827"
+};
+
+const alertStatLabel = {
+  fontSize: 12,
+  color: "#6B7280"
+};
+
+const alertCloseBtn = {
+  background: "#DC2626",
+  border: "none",
+  color: "#fff",
+  padding: "8px 14px",
+  borderRadius: 8,
+  fontWeight: 600,
+  cursor: "pointer"
+};
+
+
+
 const labelStyle = {
   fontSize: 13,
   fontWeight: 600,
@@ -935,6 +1120,13 @@ const statValue = {
   fontSize:24,
   fontWeight:700,
   color:"#111827"
+};
+
+const headerIcon = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  justifyContent: "center"
 };
 
 const iconBox = (bg)=>({

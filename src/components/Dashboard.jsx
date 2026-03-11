@@ -6,24 +6,19 @@ import {
   XAxis,
   Tooltip,
   CartesianGrid,
-  BarChart,
-  Bar,
 } from "recharts";
-
+import { useNavigate } from "react-router-dom";
 import API from "../api";
 import { Card, KPI, Btn } from "./Styles";
-import { fCur } from "../data/MasterData";
 
 export default function Dashboard({ setTab }) {
-  const [prescriptions, setPrescriptions] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [medicines, setMedicines] = useState([]);
-
+  const navigate = useNavigate();
   /* ================= LOAD DATA ================= */
 
   useEffect(() => {
-    API.get("/prescriptions").then((res) =>
-      setPrescriptions(res.data)
-    );
+    API.get("/orders").then((res) => setOrders(res.data));
 
     API.get("/medicines").then((res) =>
       setMedicines(res.data)
@@ -32,22 +27,18 @@ export default function Dashboard({ setTab }) {
 
   /* ================= KPI CALCULATIONS ================= */
 
-  const totalPrescriptions = prescriptions.length;
+  const totalOrders = orders.length;
 
-  const totalRevenue = prescriptions.reduce(
-    (sum, p) => sum + (p.total || 0),
+  const totalRevenue = orders.reduce(
+    (sum, o) => sum + (o.totalAmount || 0),
     0
   );
 
-  const collected = prescriptions
-    .filter((p) => p.payStatus === "Paid")
-    .reduce((sum, p) => sum + (p.total || 0), 0);
+  const collected = orders
+    .filter((o) => o.paymentStatus === "Paid")
+    .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
 
-  const expiring = prescriptions.filter((p) => {
-    const diff =
-      (new Date(p.expiry) - new Date()) / (1000 * 60 * 60 * 24);
-    return diff >= 0 && diff <= 7;
-  }).length;
+  const pending = totalRevenue - collected;
 
   /* ================= INVENTORY HEALTH ================= */
 
@@ -70,109 +61,152 @@ export default function Dashboard({ setTab }) {
   const monthlyRevenue = useMemo(() => {
     const map = {};
 
-    prescriptions.forEach((p) => {
-      const month = new Date(p.createdAt).toLocaleString(
+    orders.forEach((o) => {
+      if (!o.createdAt) return;
+
+      const month = new Date(o.createdAt).toLocaleString(
         "default",
         { month: "short" }
       );
 
       if (!map[month]) map[month] = 0;
-      map[month] += p.total || 0;
+
+      map[month] += o.totalAmount || 0;
     });
 
     return Object.entries(map).map(([month, revenue]) => ({
       month,
       revenue,
     }));
-  }, [prescriptions]);
+  }, [orders]);
 
-  /* ================= PRODUCT SALES ================= */
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
-  const productSales = useMemo(() => {
-    const map = {};
+      {/* KPI CARDS */}
 
-    prescriptions.forEach((p) => {
-      p.meds?.forEach((m) => {
-        if (!map[m.mName]) map[m.mName] = 0;
-        map[m.mName] += m.qty || 1;
-      });
-    });
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(5,1fr)",
+          gap: 16,
+        }}
+      >
+        <KPI label="Total Orders" value={totalOrders} />
+        <KPI label="Total Revenue" value={`₹${totalRevenue}`} />
+        <KPI label="Collected" value={`₹${collected}`} />
+        <KPI label="Pending" value={`₹${pending}`} />
+        <KPI label="Medicines" value={medicines.length} />
+      </div>
 
-    return Object.entries(map).map(([name, sold]) => ({
-      name,
-      sold,
-    }));
-  }, [prescriptions]);
-return (
-  <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      {/* CHART + INVENTORY */}
 
-    {/* KPI CARDS */}
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(5,1fr)",
-        gap: 16,
-      }}
-    >
-      <KPI label="Total Prescriptions" value={totalPrescriptions} />
-      <KPI label="Expiring (7d)" value={expiring} />
-      <KPI label="Total Revenue" value={fCur(totalRevenue)} />
-      <KPI label="Collected" value={fCur(collected)} />
-      <KPI label="Pending" value={fCur(totalRevenue - collected)} />
-    </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "2fr 1fr",
+          gap: 20,
+        }}
+      >
 
-    {/* CHART + INVENTORY GRID */}
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "2fr 1fr",
-        gap: 20,
-      }}
-    >
+        {/* MONTHLY REVENUE */}
 
-      {/* MONTHLY REVENUE */}
-      <Card
-        ch={
-          <div>
-            <h3 style={{ marginBottom: 16 }}>
-              Monthly Revenue
-            </h3>
+        <Card
+          ch={
+            <div>
+              <h3 style={{ marginBottom: 16 }}>
+                Monthly Order Revenue
+              </h3>
 
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={monthlyRevenue}>
-                <defs>
-                  <linearGradient
-                    id="revGradient"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop offset="5%" stopColor="#2563EB" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={monthlyRevenue}>
+                  <defs>
+                    <linearGradient
+                      id="revGradient"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="5%"
+                        stopColor="#2563EB"
+                        stopOpacity={0.8}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor="#2563EB"
+                        stopOpacity={0}
+                      />
+                    </linearGradient>
+                  </defs>
 
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <Tooltip formatter={(v) => `₹${v}`} />
-                <Area
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="#2563EB"
-                  fill="url(#revGradient)"
-                  strokeWidth={3}
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <Tooltip formatter={(v) => `₹${v}`} />
+
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#2563EB"
+                    fill="url(#revGradient)"
+                    strokeWidth={3}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          }
+        />
+
+        {/* INVENTORY HEALTH */}
+
+        <Card
+          ch={
+            <div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: 16,
+                }}
+              >
+                <h3>Inventory Health</h3>
+
+                <Btn
+                  ch="View Inventory"
+                  sm
+                 onClick={() => navigate("/inventory")}
                 />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        }
-      />
+              </div>
 
-      {/* INVENTORY HEALTH */}
+              <HealthBox
+                label="In Stock"
+                value={inStock}
+                color="#16A34A"
+              />
+
+              <HealthBox
+                label="Low Stock"
+                value={lowStock}
+                color="#F59E0B"
+              />
+
+              <HealthBox
+                label="Critical"
+                value={critical}
+                color="#DC2626"
+              />
+            </div>
+          }
+        />
+      </div>
+
+      {/* RECENT ORDERS */}
+
       <Card
         ch={
           <div>
+
             <div
               style={{
                 display: "flex",
@@ -180,146 +214,104 @@ return (
                 marginBottom: 16,
               }}
             >
-              <h3>Inventory Health</h3>
+              <h3 style={{ margin: 0 }}>Recent Orders</h3>
+
               <Btn
-                ch="View Inventory"
-                sm
-                onClick={() => setTab("inventory")}
-              />
+  ch="View All"
+  sm
+  onClick={() => navigate("/orders")}
+/>
             </div>
 
-            <HealthBox label="In Stock" value={inStock} color="#16A34A" />
-            <HealthBox label="Low Stock" value={lowStock} color="#F59E0B" />
-            <HealthBox label="Critical" value={critical} color="#DC2626" />
+            <div
+              style={{
+                overflowX: "auto",
+                borderRadius: 10,
+                border: "1px solid #E5E7EB",
+              }}
+            >
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  fontSize: 14,
+                  background: "#fff",
+                }}
+              >
+                <thead>
+                  <tr
+                    style={{
+                      background: "#06549d",
+                      color: "#fff",
+                    }}
+                  >
+                    <th style={th}>Order ID</th>
+                    <th style={th}>Customer</th>
+                    <th style={th}>Date</th>
+                    <th style={th}>Amount</th>
+                    <th style={th}>Status</th>
+                    <th style={th}>Payment</th>
+                  </tr>
+                </thead>
 
-            
+                <tbody>
+                  {orders
+                    .sort(
+                      (a, b) =>
+                        new Date(b.createdAt) -
+                        new Date(a.createdAt)
+                    )
+                    .slice(0, 5)
+                    .map((o) => (
+                      <tr key={o._id}>
+                        <td style={td}>{o.orderId}</td>
+
+                        <td style={td}>
+                          {o.patient?.name || "Customer"}
+                        </td>
+
+                        <td style={td}>
+                          {new Date(
+                            o.createdAt
+                          ).toLocaleDateString()}
+                        </td>
+
+                        <td style={td}>
+                          ₹{o.totalAmount || 0}
+                        </td>
+
+                        <td style={td}>
+                          <span
+                            style={statusBadge(
+                              o.orderStatus
+                            )}
+                          >
+                            {o.orderStatus}
+                          </span>
+                        </td>
+
+                        <td style={td}>
+                          <span
+                            style={paymentBadge(
+                              o.paymentStatus
+                            )}
+                          >
+                            {o.paymentStatus}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         }
       />
     </div>
-
-    {/* ================= FULL WIDTH PRESCRIPTIONS ================= */}
-
-    <Card
-  ch={
-    <div>
-      {/* HEADER */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 16,
-        }}
-      >
-        <h3 style={{ margin: 0 }}>Recent Prescriptions</h3>
-
-        <Btn
-          ch="View All"
-          sm
-          onClick={() => setTab("prescriptions")}
-        />
-      </div>
-
-      {/* TABLE */}
-      <div
-        style={{
-          overflowX: "auto",
-          borderRadius: 10,
-          border: "1px solid #E5E7EB",
-        }}
-      >
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            fontSize: 14,
-            background: "#fff",
-          }}
-        >
-          <thead>
-            <tr
-              style={{
-                background: "#06549d",
-                color: "#fff",
-              }}
-            >
-              <th style={thLeft}>Rx ID</th>
-              <th style={thLeft}>Patient</th>
-              <th style={thCenter}>Date</th>
-              <th style={thRight}>Amount</th>
-              <th style={thCenter}>Payment</th>
-              <th style={thCenter}>Action</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {prescriptions.length === 0 && (
-              <tr>
-                <td colSpan="6" style={{ textAlign: "center", padding: 20 }}>
-                  No prescriptions available.
-                </td>
-              </tr>
-            )}
-
-            {prescriptions
-              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-              .slice(0, 5)
-              .map((p) => (
-                <tr
-                  key={p._id}
-                  style={{
-                    borderBottom: "1px solid #F3F4F6",
-                    transition: "background 0.2s ease",
-                  }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.background = "#F9FAFB")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.background = "white")
-                  }
-                >
-                  <td style={tdLeft}>{p.rxId}</td>
-
-                  <td style={tdLeft}>
-                    {p.patient?.name || p.patientName || "Patient"}
-                  </td>
-
-                  <td style={tdCenter}>
-                    {new Date(p.createdAt).toLocaleDateString()}
-                  </td>
-
-                  <td style={tdRight}>{fCur(p.total)}</td>
-
-                  <td style={tdCenter}>
-                    <span style={statusBadge(p.payStatus)}>
-                      {p.payStatus}
-                    </span>
-                  </td>
-
-                  <td style={tdCenter}>
-                    <Btn
-                      ch="View"
-                      sm
-                      onClick={() => setTab("prescriptions")}
-                    />
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  }
-/>
-
-  </div>
-);
+  );
 }
 
-
-
-/* ================= SMALL COMPONENT ================= */
+/* ================= COMPONENTS ================= */
 
 const HealthBox = ({ label, value, color }) => (
   <div
@@ -335,6 +327,7 @@ const HealthBox = ({ label, value, color }) => (
     <div style={{ fontSize: 22, fontWeight: 700, color }}>
       {value}
     </div>
+
     <div style={{ fontSize: 12, color: "#6B7280" }}>
       {label}
     </div>
@@ -343,19 +336,29 @@ const HealthBox = ({ label, value, color }) => (
 
 /* ================= TABLE STYLES ================= */
 
-const thLeft = { padding: 12, textAlign: "left" };
-const thCenter = { padding: 12, textAlign: "center" };
-const thRight = { padding: 12, textAlign: "right" };
+const th = { padding: 12, textAlign: "left" };
 
-const tdLeft = { padding: 10, textAlign: "left" };
-const tdCenter = { padding: 10, textAlign: "center" };
-const tdRight = { padding: 10, textAlign: "right", fontWeight: 600 };
+const td = {
+  padding: 10,
+  borderBottom: "1px solid #F3F4F6",
+};
 
 const statusBadge = (status) => ({
   padding: "4px 10px",
   borderRadius: 20,
   fontSize: 12,
   fontWeight: 600,
-  background: status === "Paid" ? "#DCFCE7" : "#FEE2E2",
-  color: status === "Paid" ? "#166534" : "#991B1B",
+  background: "#DBEAFE",
+  color: "#1E40AF",
+});
+
+const paymentBadge = (status) => ({
+  padding: "4px 10px",
+  borderRadius: 20,
+  fontSize: 12,
+  fontWeight: 600,
+  background:
+    status === "Paid" ? "#DCFCE7" : "#FEE2E2",
+  color:
+    status === "Paid" ? "#166534" : "#991B1B",
 });

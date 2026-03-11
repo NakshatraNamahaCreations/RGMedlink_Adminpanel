@@ -10,7 +10,7 @@ export const RxView = ({ role }) => {
   const [viewRx, setViewRx] = useState(null);
   const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(false);
-const [confirmId, setConfirmId] = useState(null);
+// const [confirmId, setConfirmId] = useState(null);
   const thLeft = { padding: 14, textAlign: "left" };
 const thCenter = { padding: 14, textAlign: "center" };
 const thRight = { padding: 14, textAlign: "right" };
@@ -20,10 +20,10 @@ const tdCenter = { padding: 12, textAlign: "center" };
 const tdRight = { padding: 12, textAlign: "right", fontWeight: 600 };
 
 const [currentPage, setCurrentPage] = useState(1);
-const rowsPerPage = 8;
+const rowsPerPage = 5;
 
 const [visibleCols, setVisibleCols] = useState(9);
-const [payingId, setPayingId] = useState(null);
+// const [payingId, setPayingId] = useState(null);
 
 const badge = (status) => ({
   padding: "4px 10px",
@@ -148,38 +148,36 @@ const columns = [
 };
 
   // ───────────────── MARK PAID ─────────────────
-const markPaid = async (id) => {
-  try {
+// const markPaid = async (id) => {
+//   try {
 
-    const res = await API.patch(`/prescriptions/${id}/pay`);
+//     const res = await API.patch(`/prescriptions/${id}/pay`);
 
-    console.log("PAY RESPONSE:", res.data);
+//     console.log("PAY RESPONSE:", res.data);
 
-    toast_("Payment marked as paid");
+//     toast_("Payment marked as paid");
+//     await fetchPrescriptions();
 
-    // reload table data
-    await fetchPrescriptions();
+//   } catch (err) {
 
-  } catch (err) {
+//     console.error("PAY ERROR:", err.response?.data || err.message);
 
-    console.error("PAY ERROR:", err.response?.data || err.message);
+//     toast_(err.response?.data?.message || "Payment failed", "err");
 
-    toast_(err.response?.data?.message || "Payment failed", "err");
-
-  }
-};
+//   }
+// };
 
   // ───────────────── RENEW ─────────────────
-  const renewPrescription = async (id) => {
-    try {
-      await API.post(`/prescriptions/${id}/renew`);
-      toast_("Prescription renewed");
-      fetchPrescriptions();
-    } catch (err) {
-      console.error(err);
-      toast_("Renew failed", "err");
-    }
-  };
+  // const renewPrescription = async (id) => {
+  //   try {
+  //     await API.post(`/prescriptions/${id}/renew`);
+  //     toast_("Prescription renewed");
+  //     fetchPrescriptions();
+  //   } catch (err) {
+  //     console.error(err);
+  //     toast_("Renew failed", "err");
+  //   }
+  // };
 
   useEffect(() => {
   const table = document.querySelector("table");
@@ -395,22 +393,11 @@ const markPaid = async (id) => {
               <td style={tdCenter}>{r.ordStatus}</td>
 
               <td style={tdCenter}>
-                <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
-                  <Btn ch="View" sm onClick={() => setViewRx(r)} />
-
-                 {canEdit && r.payStatus?.toLowerCase() !== "paid" && (
- <Btn
-  ch={payingId === r.id ? "Processing..." : "Mark Paid"}
-  sm
-  disabled={payingId === r.id}
-  onClick={() => setConfirmId(r.id)}
-/>
-)}
-
-                  {canEdit && exp && (
-                    <Btn ch="Renew" sm onClick={() => renewPrescription(r.id)} />
-                  )}
-                </div>
+                <td style={tdCenter}>
+  <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
+    <Btn ch="View" sm onClick={() => setViewRx(r)} />
+  </div>
+</td>
               </td>
             </tr>
           );
@@ -593,103 +580,7 @@ const markPaid = async (id) => {
       )}
 
 
-      {confirmId && (
-  <Modal
-    title="Confirm Payment"
-    w={420}
-    onClose={() => setConfirmId(null)}
-    ch={
-      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-
-        {/* Warning Section */}
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            background: "#FEF3C7",
-            padding: 14,
-            borderRadius: 8,
-            border: "1px solid #FCD34D",
-            alignItems: "flex-start",
-          }}
-        >
-          <div
-            style={{
-              fontSize: 20,
-              color: "#B45309",
-            }}
-          >
-            ⚠️
-          </div>
-
-          <div style={{ fontSize: 14, color: "#92400E" }}>
-            <strong>Important:</strong> Once marked as paid,
-            this action will update the billing record permanently.
-          </div>
-        </div>
-
-        {/* Main Message */}
-        <div style={{ fontSize: 15, lineHeight: 1.6 }}>
-          Are you sure you want to mark this prescription as{" "}
-          <strong>Paid</strong>?
-        </div>
-
-        {/* Divider */}
-        <div
-          style={{
-            height: 1,
-            background: "#E5E7EB",
-            margin: "4px 0",
-          }}
-        />
-
-        {/* Buttons */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: 10,
-          }}
-        >
-          <button
-            onClick={() => setConfirmId(null)}
-            style={{
-              padding: "8px 16px",
-              borderRadius: 6,
-              border: "1px solid #D1D5DB",
-              background: "#F9FAFB",
-              cursor: "pointer",
-            }}
-          >
-            Cancel
-          </button>
-
-          <button
-           onClick={async () => {
-  await markPaid(confirmId);
-  setConfirmId(null);
-
-  // refresh the page
-  window.location.reload();
-}}
-            style={{
-              padding: "8px 18px",
-              borderRadius: 6,
-              border: "none",
-              background: "#2563EB",
-              color: "#fff",
-              fontWeight: 600,
-              cursor: "pointer",
-              boxShadow: "0 4px 10px rgba(37,99,235,0.3)",
-            }}
-          >
-            Confirm Payment
-          </button>
-        </div>
-      </div>
-    }
-  />
-)}
+     
     </div>
   );
 };
