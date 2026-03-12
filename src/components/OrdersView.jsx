@@ -1,7 +1,9 @@
 import { useEffect, useState, useMemo } from "react";
 import API from "../api";
+import { useNavigate } from "react-router-dom";
 import { Card, Btn } from "./Styles";
 import { FaSearch, FaEye } from "react-icons/fa";
+import { useLocation } from "react-router-dom";
 
 const OrdersView = () => {
   const [orders, setOrders] = useState([]);
@@ -10,6 +12,10 @@ const OrdersView = () => {
 const [loading, setLoading] = useState(true);
 const [currentPage, setCurrentPage] = useState(1);
 const rowsPerPage = 6;
+const navigate = useNavigate();
+const location = useLocation();
+const highlightOrderId = location.state?.orderId;
+
 
 useEffect(() => {
   setCurrentPage(1);
@@ -18,6 +24,20 @@ useEffect(() => {
     fetchOrders();
   }, []);
 
+  useEffect(() => {
+  if (!highlightOrderId) return;
+
+  setTimeout(() => {
+    const row = document.getElementById(`order-${highlightOrderId}`);
+    if (row) {
+      row.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, 300);
+}, [orders, highlightOrderId]);
+
+
+
+  
  const fetchOrders = async () => {
   try {
     setLoading(true);
@@ -126,14 +146,28 @@ const paginatedOrders = useMemo(() => {
   ) : (
     paginatedOrders.map((o, i) => (
       <tr
-        key={o._id}
-        style={{
-          background: i % 2 === 0 ? "#fff" : "#F8FAFC",
-        }}
-      >
+  key={o._id}
+  id={`order-${o.orderId}`}
+  style={{
+    background:
+      o.orderId === highlightOrderId
+        ? "#DBEAFE"
+        : i % 2 === 0
+        ? "#fff"
+        : "#F8FAFC",
+    fontWeight: o.orderId === highlightOrderId ? 600 : 400,
+  }}
+>
         <td style={td}>{o.orderId}</td>
 
-        <td style={td}>{o.patient?.name || "Unknown"}</td>
+        <td style={td}>
+  <span
+    style={{ color: "#1D4ED8", cursor: "pointer", fontWeight: 600 }}
+    onClick={() => navigate("/patients", { state: { patientId: o.patient?._id } })}
+  >
+    {o.patient?.name || "Unknown"}
+  </span>
+</td>
 
         <td style={td}>
           {o.createdAt

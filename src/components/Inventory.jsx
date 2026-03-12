@@ -31,9 +31,13 @@ const defaultCategories = [
 
 const units = ["Tablet", "Bottle", "Strip", "Tube", "Box"];
 
-const statuses = ["Active", "Inactive", "Discontinued"];
+const statuses = ["Active", "Inactive"];
+
 
 const InventoryMgt = () => {
+  const [viewMed, setViewMed] = useState(null);
+  const [activeMenu, setActiveMenu] = useState(null);
+  const [qty,setQty] = useState(1);
   const [meds, setMeds] = useState([]);
   const [search, setSearch] = useState("");
   const [editMed, setEditMed] = useState(null);
@@ -44,11 +48,23 @@ const [showAlert, setShowAlert] = useState(true);
 const [newCategory, setNewCategory] = useState("");
 const [currentPage, setCurrentPage] = useState(1);
 const rowsPerPage = 6;
-const [visibleCols, setVisibleCols] = useState(11);
+const [visibleCols, setVisibleCols] = useState(12);
 
  useEffect(() => {
   fetchDashboard();
 }, []);
+
+const toggleStatus = async (m) => {
+
+  const newStatus = m.status === "Active" ? "Inactive" : "Active";
+
+  await API.put(`/medicines/${m._id}`, {
+    ...m,
+    status: newStatus
+  });
+
+  fetchDashboard();
+};
 
 useEffect(() => {
   setCurrentPage(1);
@@ -61,16 +77,23 @@ useEffect(() => {
   setMeds(res.data.medicines);
 };
 
-  const saveMed = async () => {
-    if (editMed._id) {
-      await API.put(`/medicines/${editMed._id}`, editMed);
-    } else {
-      await API.post("/medicines", editMed);
-    }
+const saveMed = async () => {
 
-    setEditMed(null);
-    fetchDashboard();
+  const updatedMed = {
+    ...editMed,
+    stock: editMed.stock
   };
+
+  if (editMed._id) {
+    await API.put(`/medicines/${editMed._id}`, updatedMed);
+  } else {
+    await API.post("/medicines", updatedMed);
+  }
+
+  setQty(1);
+  setEditMed(null);
+  fetchDashboard();
+};
 
   const deleteMed = async (id) => {
     if (!window.confirm("Delete this medicine?")) return;
@@ -92,14 +115,31 @@ const paginatedMeds = useMemo(() => {
 }, [filtered, currentPage]);
 
   const getStatus = (m) => {
-    if (m.stock === 0) return { label: "Out of Stock", color: "#DC2626" };
-    if (m.stock <= m.minStock) return { label: "Low Stock", color: "#D97706" };
-    return { label: "In Stock", color: "#16A34A" };
-  };
 
-  const totalMeds = dashboard?.totalSKUs || 0;
+  if (m.stock === 0)
+    return { label: "Out of Stock", color: "#DC2626" };
+
+  if (m.stock > 0 && m.stock <= m.minStock * 0.5)
+    return { label: "Critical", color: "#B91C1C" };
+
+  if (m.stock > m.minStock * 0.5 && m.stock <= m.minStock)
+    return { label: "Low Stock", color: "#D97706" };
+
+  return { label: "In Stock", color: "#16A34A" };
+
+};
+
+ const totalMeds = dashboard?.totalSKUs || 0;
 const lowStock = dashboard?.lowStockItems || 0;
 const totalStock = meds.reduce((sum, m) => sum + m.stock, 0);
+
+// TABLET PRICE CALCULATIONS
+const isTablet = editMed?.unit === "Tablet";
+
+const piecePrice = editMed?.price || 0;
+
+const price30Pieces = piecePrice * 30;
+const price50Pieces = piecePrice * 50;
 
 useEffect(() => {
   const table = document.querySelector("table");
@@ -124,7 +164,13 @@ useEffect(() => {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
-      {dashboard && showAlert && dashboard.criticalStock > 0 && (
+      {dashboard &&
+showAlert &&
+(
+  dashboard.criticalStock > 0 ||
+  dashboard.lowStockItems > 0 ||
+  dashboard.outOfStock > 0
+) && (
 
 <div style={premiumAlertContainer}>
 
@@ -351,15 +397,18 @@ useEffect(() => {
         <Btn
           ch="+ Add Medicine"
           onClick={() =>
-            setEditMed({
-              name: "",
-              category: "",
-              price: "",
-              stock: "",
-              minStock: "",
-              unit: "Tablet",
-              status: "Active",
-            })
+           setEditMed({
+  name: "",
+  category: "",
+  price: "",
+  pricePerPiece: "",
+  piecesPerStrip: 10,
+  stock: "",
+  minStock: "",
+  unit: "Tablet",
+  status: "Active",
+  inactiveReason: ""
+})
           }
         />
 
@@ -395,10 +444,10 @@ useEffect(() => {
         fontSize: 13,
       }}
     >
-      <option value={5}>5 Columns</option>
+      {/* <option value={5}>5 Columns</option> */}
       <option value={8}>8 Columns</option>
-      <option value={10}>10 Columns</option>
-      <option value={11}>All Columns</option>
+      <option value={11}>11 Columns</option>
+      <option value={12}>All Columns</option>
     </select>
   </div>
 </div>
@@ -420,37 +469,39 @@ useEffect(() => {
         {/* HEADER */}
 
        <thead>
-  <tr
-    style={{
-      background: "#06549d",
-      color: "#fff",
-      fontSize: 13,
-      letterSpacing: 0.3
-    }}
-  >
-    {[
-      "Medicine",
-      "Category",
-      "Price",
-      "Stock",
-      "Min Stock",
+<tr
+  style={{
+    background: "#06549d",
+    color: "#fff",
+    fontSize: 13,
+    letterSpacing: 0.3
+  }}
+>
+{[
+  "Medicine",
+  "Category",
+  "Price",
+  "Stock",
+  "Min Stock",
 
-      <span style={headerIcon}>
-        <HiOutlineChartBar size={14} /> 30d Demand
-      </span>,
+  <span style={headerIcon}>
+    <HiOutlineChartBar size={14}/> 30d Demand
+  </span>,
 
-      <span style={headerIcon}>
-        <HiOutlineChartBar size={14} /> 90d Demand
-      </span>,
+  <span style={headerIcon}>
+    <HiOutlineChartBar size={14}/> 90d Demand
+  </span>,
 
-      "Status",
-      "Days Until Stockout",
-      "Auto Reorder Qty",
-      "Actions"
-    ].map((head, i) => (
-      <th key={i} style={th}>{head}</th>
-    ))}
-  </tr>
+  "Stock Status",
+  "Medicine Status",
+  "Days Until Stockout",
+  "Auto Reorder Qty",
+  "Actions"
+
+].map((head,i)=>(
+  <th key={i} style={th}>{head}</th>
+))}
+</tr>
 </thead>
 
         {/* BODY */}
@@ -522,7 +573,7 @@ useEffect(() => {
                     >
                       <div
                         style={{
-                          width: `${Math.min((m.stock / (m.minStock || 1)) * 100, 100)}%`,
+                          width: `${Math.min((m.stock / (m.minStock * 2 || 1)) * 100, 100)}%`,
                           height: "100%",
                           background:
                             m.stock <= m.minStock
@@ -557,11 +608,13 @@ useEffect(() => {
                   <span
                     style={{
                       background:
-                        status.label === "Low Stock"
-                          ? "#FEF3C7"
-                          : status.label === "Out of Stock"
-                            ? "#FEE2E2"
-                            : "#DCFCE7",
+  status.label === "Critical"
+    ? "#FEE2E2"
+    : status.label === "Low Stock"
+      ? "#FEF3C7"
+      : status.label === "Out of Stock"
+        ? "#FECACA"
+        : "#DCFCE7",
                       color: status.color,
                       padding: "4px 10px",
                       borderRadius: 20,
@@ -572,6 +625,22 @@ useEffect(() => {
                     {status.label}
                   </span>
                 </td>
+                {/* Medicine Active/Inactive */}
+
+<td style={{padding:"14px 5px"}}>
+  <span
+    style={{
+      background: m.status === "Active" ? "#DCFCE7" : "#FEE2E2",
+      color: m.status === "Active" ? "#16A34A" : "#DC2626",
+      padding: "4px 10px",
+      borderRadius: 20,
+      fontWeight: 600,
+      fontSize: 13
+    }}
+  >
+    {m.status}
+  </span>
+</td>
 
                 {/* Days Until Stockout */}
 
@@ -610,12 +679,45 @@ useEffect(() => {
 
                 {/* Actions */}
 
-                <td style={td}>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <Btn ch="Edit" sm v="ghost" onClick={() => setEditMed(m)} />
-                    <Btn ch="Delete" sm v="danger" onClick={() => deleteMed(m._id)} />
-                  </div>
-                </td>
+          <td style={td}>
+  <div style={{ position: "relative" }}>
+    <button
+      style={viewBtn}
+      onClick={() => setViewMed(m)}
+    >
+      View
+    </button>
+
+
+    {activeMenu === m._id && (
+      <div style={actionMenu}>
+
+        <div
+          style={menuItem}
+          onClick={() => toggleStatus(m)}
+        >
+          {m.status === "Active" ? "Deactivate" : "Activate"}
+        </div>
+
+        <div
+          style={menuItem}
+          onClick={() => setEditMed(m)}
+        >
+          Edit
+        </div>
+
+        <div
+          style={{ ...menuItem, color: "#DC2626" }}
+          onClick={() => deleteMed(m._id)}
+        >
+          Delete
+        </div>
+
+      </div>
+    )}
+
+  </div>
+</td>
 
               </tr>
 
@@ -727,108 +829,303 @@ useEffect(() => {
 
 )}
       {/* MODAL */}
+{viewMed && (
+  <Modal
+    title="Medicine Details"
+    w={520}
+    onClose={() => setViewMed(null)}
+    ch={
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
+        <div style={viewRow}>
+          <span style={viewLabel}>Medicine</span>
+          <span style={viewValue}>{viewMed.name}</span>
+        </div>
+
+        <div style={viewRow}>
+          <span style={viewLabel}>Category</span>
+          <span style={viewValue}>{viewMed.category}</span>
+        </div>
+
+        <div style={viewRow}>
+          <span style={viewLabel}>Price</span>
+          <span style={viewValue}>₹{viewMed.price}</span>
+        </div>
+
+        <div style={viewRow}>
+          <span style={viewLabel}>Stock</span>
+          <span style={viewValue}>{viewMed.stock}</span>
+        </div>
+
+        <div style={viewRow}>
+          <span style={viewLabel}>Minimum Stock</span>
+          <span style={viewValue}>{viewMed.minStock}</span>
+        </div>
+
+        {/* STATUS BADGE */}
+
+        <div style={viewRow}>
+          <span style={viewLabel}>Status</span>
+
+          <span
+            style={{
+              padding: "4px 12px",
+              borderRadius: 20,
+              fontWeight: 600,
+              fontSize: 12,
+              background:
+                viewMed.status === "Active"
+                  ? "#DCFCE7"
+                  : "#FEE2E2",
+              color:
+                viewMed.status === "Active"
+                  ? "#16A34A"
+                  : "#DC2626"
+            }}
+          >
+            {viewMed.status}
+          </span>
+        </div>
+
+        {/* INACTIVE REASON */}
+
+        {viewMed.status === "Inactive" && (
+          <div style={inactiveBox}>
+            <strong>Deactivated Reason</strong>
+            <div style={{ marginTop: 6 }}>
+              {viewMed.inactiveReason || "No reason provided"}
+            </div>
+          </div>
+        )}
+
+        {/* ACTION BUTTONS */}
+
+        <div style={viewActions}>
+
+          {/* <button
+            style={
+              viewMed.status === "Active"
+                ? deactivateBtn
+                : activateBtn
+            }
+            onClick={async () => {
+
+              const newStatus =
+                viewMed.status === "Active"
+                  ? "Inactive"
+                  : "Active";
+
+              await API.put(`/medicines/${viewMed._id}`, {
+                ...viewMed,
+                status: newStatus
+              });
+
+              setViewMed(null);
+              fetchDashboard();
+            }}
+          >
+            {viewMed.status === "Active"
+              ? "Deactivate"
+              : "Activate"}
+          </button> */}
+
+          <Btn
+            ch="Edit"
+            onClick={() => {
+              setEditMed(viewMed);
+              setViewMed(null);
+            }}
+          />
+
+          <button
+            style={deleteBtn}
+            onClick={() => {
+              deleteMed(viewMed._id);
+              setViewMed(null);
+            }}
+          >
+            Delete
+          </button>
+
+        </div>
+
+      </div>
+    }
+  />
+)}
       {editMed && (
-        <Modal
-          title={editMed._id ? "Edit Medicine" : "Add Medicine"}
-          w={520}
-          onClose={() => setEditMed(null)}
-          ch={
-            <div style={formGrid}>
+      <Modal
+  title={editMed._id ? "Edit Medicine" : "Add Medicine"}
+  w={520}
+  onClose={() => setEditMed(null)}
+  ch={
+    <div style={formGrid}>
 
-              <Field label="Medicine Name" value={editMed.name}
-                onChange={(v) => setEditMed({ ...editMed, name: v })} />
-             
-               <div>
-  <label style={labelStyle}>Category</label>
+      {/* Medicine Name */}
+      <Field
+        label="Medicine Name"
+        value={editMed.name}
+        onChange={(v) => setEditMed({ ...editMed, name: v })}
+      />
 
-  <div style={{ display: "flex", gap: 8 }}>
+      {/* Category */}
+      <div>
+        <label style={labelStyle}>Category</label>
 
-    <select
-      value={editMed.category}
-      style={selectStyle}
-      onChange={(e) =>
-        setEditMed({ ...editMed, category: e.target.value })
-      }
-    >
-      <option value="">Select Category</option>
+        <div style={{ display: "flex", gap: 8 }}>
 
-      {categories.map((c) => (
-        <option key={c}>{c}</option>
-      ))}
+          <select
+            value={editMed.category}
+            style={selectStyle}
+            onChange={(e) =>
+              setEditMed({ ...editMed, category: e.target.value })
+            }
+          >
+            <option value="">Select Category</option>
 
-    </select>
+            {categories.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
 
-    {/* ADD CATEGORY BUTTON */}
+          </select>
 
-    <button
-      onClick={() => setShowCategoryModal(true)}
-      style={addCategoryBtn}
-    >
-      <FaPlus size={12} />
-    </button>
+          <button
+            onClick={() => setShowCategoryModal(true)}
+            style={addCategoryBtn}
+          >
+            <FaPlus size={12} />
+          </button>
+
+        </div>
+      </div>
+
+      {/* Price */}
+      <Field
+        label="Price"
+        value={editMed.price}
+        type="number"
+        onChange={(v) => setEditMed({ ...editMed, price: v })}
+      />
+
+      {/* Unit */}
+      <div>
+        <label style={labelStyle}>Unit</label>
+
+        <select
+          value={editMed.unit}
+          style={selectStyle}
+          onChange={(e) =>
+            setEditMed({ ...editMed, unit: e.target.value })
+          }
+        >
+          {units.map((u) => (
+            <option key={u}>{u}</option>
+          ))}
+        </select>
+      </div>
+
+
+      {/* Tablet Calculated Pricing */}
+ {editMed?.unit === "Tablet" && (
+
+<div style={priceCard}>
+
+  <div style={priceCardHeader}>
+    Bulk Pricing
+  </div>
+
+  <div style={priceGrid}>
+
+    <div style={priceItem}>
+      <span style={priceLabel}>Piece Price</span>
+      <span style={priceValue}>₹{piecePrice}</span>
+    </div>
+
+     <div style={priceItem}>
+      <span style={priceLabel}>30 Pieces</span>
+      <span style={priceValue}>₹{price30Pieces}</span>
+    </div>
+
+    <div style={priceItem}>
+      <span style={priceLabel}>50 Pieces</span>
+      <span style={priceValue}>₹{price50Pieces}</span>
+    </div>
+
 
   </div>
+
 </div>
 
-              <Field label="Price"
-                value={editMed.price}
-                type="number"
-                onChange={(v) => setEditMed({ ...editMed, price: v })}
-              />
+)}
 
-              <Field label="Current Stock"
-                value={editMed.stock}
-                type="number"
-                onChange={(v) => setEditMed({ ...editMed, stock: v })}
-              />
+      {/* Current Stock */}
+      <Field
+        label="Current Stock"
+        value={editMed.stock}
+        type="number"
+        onChange={(v) => setEditMed({ ...editMed, stock: v })}
+      />
 
-              <Field label="Minimum Stock"
-                value={editMed.minStock}
-                type="number"
-                onChange={(v) => setEditMed({ ...editMed, minStock: v })}
-              />
+      {/* Minimum Stock */}
+      <Field
+        label="Minimum Stock"
+        value={editMed.minStock}
+        type="number"
+        onChange={(v) => setEditMed({ ...editMed, minStock: v })}
+      />
 
-            
+      {/* Status */}
+      <div>
+        <label style={labelStyle}>Status</label>
 
-              <div>
-                <label style={labelStyle}>Unit</label>
-                <select
-                  value={editMed.unit}
-                  style={selectStyle}
-                  onChange={(e) =>
-                    setEditMed({ ...editMed, unit: e.target.value })
-                  }
-                >
-                  {units.map((u) => (
-                    <option key={u}>{u}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label style={labelStyle}>Status</label>
-                <select
-                  value={editMed.status}
-                  style={selectStyle}
-                  onChange={(e) =>
-                    setEditMed({ ...editMed, status: e.target.value })
-                  }
-                >
-                  {statuses.map((s) => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={formButtons}>
-                <Btn ch="Cancel" v="ghost" onClick={() => setEditMed(null)} />
-                <Btn ch="Save" onClick={saveMed} />
-              </div>
-
-            </div>
+        <select
+          value={editMed.status}
+          style={selectStyle}
+          onChange={(e) =>
+            setEditMed({ ...editMed, status: e.target.value })
           }
-        />
+        >
+          {statuses.map((s) => (
+            <option key={s}>{s}</option>
+          ))}
+        </select>
+      </div>
+      {editMed?.status === "Inactive" && (
+
+  <div style={{gridColumn:"span 2"}}>
+
+    <label style={labelStyle}>Reason for Inactive</label>
+
+    <textarea
+      value={editMed.inactiveReason || ""}
+      placeholder="Enter reason (Expired, Discontinued, Supplier issue, etc.)"
+      style={{
+        width:"100%",
+        padding:10,
+        borderRadius:6,
+        border:"1px solid #ddd",
+        resize:"none",
+        minHeight:70
+      }}
+      onChange={(e)=>
+        setEditMed({...editMed, inactiveReason:e.target.value})
+      }
+    />
+
+  </div>
+
+)}
+
+
+      {/* Buttons */}
+      <div style={formButtons}>
+        <Btn ch="Cancel" v="ghost" onClick={() => setEditMed(null)} />
+        <Btn ch="Save" onClick={saveMed} />
+      </div>
+
+    </div>
+  }
+/>
       )}
 
 
@@ -1071,6 +1368,33 @@ const searchInput = {
   width: "100%",
 };
 
+const actionBtn = {
+  border: "none",
+  background: "transparent",
+  fontSize: 20,
+  cursor: "pointer"
+};
+
+const actionMenu = {
+  position: "absolute",
+  right: 0,
+  top: 24,
+  background: "#fff",
+  border: "1px solid #E5E7EB",
+  borderRadius: 8,
+  boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+  width: 120,
+  zIndex: 10
+};
+
+const menuItem = {
+  padding: "10px 12px",
+  fontSize: 13,
+  cursor: "pointer",
+  borderBottom: "1px solid #F3F4F6"
+};
+
+
 const th = {
   padding: "14px 16px",
   textAlign: "left",
@@ -1138,5 +1462,116 @@ const iconBox = (bg)=>({
   justifyContent:"center",
   background:bg
 });
+const priceCard = {
+  gridColumn: "span 2",
+  background: "#F9FAFB",
+  border: "1px solid #E5E7EB",
+  borderRadius: 10,
+  padding: 14,
+  marginTop: 6
+};
+
+const priceCardHeader = {
+  fontSize: 13,
+  fontWeight: 700,
+  marginBottom: 10,
+  color: "#374151"
+};
+
+const priceGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3,1fr)",
+  gap: 10
+};
+
+const priceItem = {
+  background: "#fff",
+  borderRadius: 8,
+  padding: "10px 12px",
+  border: "1px solid #E5E7EB",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center"
+};
+
+const priceLabel = {
+  fontSize: 12,
+  color: "#6B7280"
+};
+
+const priceValue = {
+  fontSize: 16,
+  fontWeight: 700,
+  color: "#111827",
+  marginTop: 2
+};
+
+const viewBtn = {
+  background: "#06549d",
+  color: "#fff",
+  border: "none",
+  padding: "6px 12px",
+  borderRadius: 6,
+  fontSize: 12,
+  cursor: "pointer",
+  fontWeight: 600
+};
+
+const viewRow = {
+  display: "flex",
+  justifyContent: "space-between",
+  paddingBottom: 8,
+  borderBottom: "1px solid #F1F5F9"
+};
+
+const viewLabel = {
+  fontWeight: 600,
+  color: "#6B7280"
+};
+
+const viewValue = {
+  fontWeight: 700
+};
+
+const inactiveBox = {
+  background: "#FEF2F2",
+  border: "1px solid #FECACA",
+  padding: 12,
+  borderRadius: 8,
+  fontSize: 13
+};
+
+const viewActions = {
+  display: "flex",
+  justifyContent: "flex-end",
+  gap: 10
+};
+
+const activateBtn = {
+  background: "#16A34A",
+  color: "#fff",
+  border: "none",
+  padding: "8px 14px",
+  borderRadius: 8,
+  cursor: "pointer"
+};
+
+const deactivateBtn = {
+  background: "#F59E0B",
+  color: "#fff",
+  border: "none",
+  padding: "8px 14px",
+  borderRadius: 8,
+  cursor: "pointer"
+};
+
+const deleteBtn = {
+  background: "#DC2626",
+  color: "#fff",
+  border: "none",
+  padding: "8px 14px",
+  borderRadius: 8,
+  cursor: "pointer"
+};
 
 export default InventoryMgt;

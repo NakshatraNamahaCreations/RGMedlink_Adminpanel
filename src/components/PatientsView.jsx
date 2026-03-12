@@ -1,21 +1,50 @@
 import { useState, useEffect } from "react";
 import API from "../api";
 import { Card, Btn, Inp, Field, Modal } from "./Styles";
-
+import { useLocation } from "react-router-dom";
 const PatientsView = () => {
 
   const [patients, setPatients] = useState([]);
   const [prescriptions, setPrescriptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editPatient, setEditPatient] = useState(null);
+  
 const [currentPage, setCurrentPage] = useState(1);
 const rowsPerPage = 5;
 const [visibleCols, setVisibleCols] = useState(8);
+const location = useLocation();
+const highlightPatientId = location.state?.patientId;
 
   useEffect(() => {
     fetchPatients();
     fetchPrescriptions();
   }, []);
+
+  useEffect(() => {
+  if (!highlightPatientId) return;
+
+
+  setTimeout(() => {
+    const row = document.getElementById(`patient-${highlightPatientId}`);
+    if (row) {
+      row.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, 300);
+}, [patients]);
+
+
+
+useEffect(() => {
+  if (!highlightPatientId) return;
+
+  setTimeout(() => {
+    const row = document.getElementById(`patient-${highlightPatientId}`);
+    if (row) {
+      row.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, 300);
+}, [patients, highlightPatientId]);
+
 
   /* FETCH PATIENTS */
 
@@ -246,12 +275,19 @@ const paginatedPatients = patients.slice(
                     const stats = patientStats(p._id);
 
                     return (
-                      <tr
-                        key={p._id}
-                        style={{
-                          background: i % 2 === 0 ? "#fff" : "#F8FAFC",
-                        }}
-                      >
+                    <tr
+  id={`patient-${p._id}`}
+  key={p._id}
+  style={{
+    background:
+      p._id === highlightPatientId
+        ? "#DBEAFE"
+        : i % 2 === 0
+        ? "#fff"
+        : "#F8FAFC",
+    fontWeight: p._id === highlightPatientId ? 600 : 400,
+  }}
+>
 
                         <td style={tdStyle}>{p.name}</td>
                         <td style={tdStyle}>{p.age}</td>

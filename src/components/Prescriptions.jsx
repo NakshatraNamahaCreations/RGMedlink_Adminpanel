@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { C, Card, Tag, Btn, Modal, Toast } from "./Styles";
 import { dLeft, isExp, fDate, fCur } from "../data/MasterData";
+import { useNavigate } from "react-router-dom";
 import API from "../api";
 import RxForm from "./RxForm";
 
@@ -18,7 +19,7 @@ const thRight = { padding: 14, textAlign: "right" };
 const tdLeft = { padding: 12, textAlign: "left" };
 const tdCenter = { padding: 12, textAlign: "center" };
 const tdRight = { padding: 12, textAlign: "right", fontWeight: 600 };
-
+const navigate = useNavigate();
 const [currentPage, setCurrentPage] = useState(1);
 const rowsPerPage = 5;
 
@@ -70,6 +71,7 @@ const badge = (status) => ({
         expiry: r.expiry,
         subtotal: r.subtotal,
         gst: r.gst,
+         patientId: r.patient?._id,   // ✅ ADD THIS
         discount: r.discount,
         total: r.total,
         payStatus: r.payStatus,
@@ -378,7 +380,16 @@ const columns = [
               style={{ borderBottom: "1px solid #E5E7EB" }}
             >
               <td style={tdLeft}>{r.rxId}</td>
-              <td style={tdLeft}>{r.pName}</td>
+             <td style={tdLeft}>
+  <span
+    style={{ color: "#1D4ED8", cursor: "pointer", fontWeight: 600 }}
+    onClick={() =>
+      navigate("/patients", { state: { patientId: r.patientId } })
+    }
+  >
+    {r.pName}
+  </span>
+</td>
               <td style={tdLeft}>{r.doctor}</td>
               <td style={tdCenter}>{fDate(r.start)}</td>
               <td style={tdCenter}>{fDate(r.expiry)}</td>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import API from "../api";
 import { Card, Btn } from "./Styles";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const BillingInvoiceView = () => {
 
@@ -12,6 +12,8 @@ const [currentPage, setCurrentPage] = useState(1);
 const rowsPerPage = 6;
 
 const navigate = useNavigate();
+const location = useLocation();
+const highlightOrderId = location.state?.orderId;
 
 const totalPages = Math.ceil(orders.length / rowsPerPage);
 
@@ -20,6 +22,19 @@ const paginatedOrders = useMemo(() => {
   return orders.slice(start, start + rowsPerPage);
 }, [orders, currentPage]);
 
+
+useEffect(() => {
+  if (!highlightOrderId) return;
+
+  const index = orders.findIndex(
+    (o) => o.orderId === highlightOrderId
+  );
+
+  if (index !== -1) {
+    const page = Math.floor(index / rowsPerPage) + 1;
+    setCurrentPage(page);
+  }
+}, [orders, highlightOrderId]);
 
   useEffect(() => {
     fetchBilling();
@@ -108,7 +123,21 @@ const paginatedOrders = useMemo(() => {
                         background: i % 2 === 0 ? "#fff" : "#F8FAFC",
                       }}
                     >
-                      <td style={td}>{o.orderId}</td>
+                      <td style={td}>
+  <span
+    style={{
+      color: "#1D4ED8",
+      cursor: "pointer",
+      fontWeight: 600,
+      textDecoration: "underline"
+    }}
+    onClick={() =>
+      navigate("/orders", { state: { orderId: o.orderId } })
+    }
+  >
+    {o.orderId}
+  </span>
+</td>
 
                       <td style={td}>{o.invoiceNumber}</td>
 
@@ -118,7 +147,21 @@ const paginatedOrders = useMemo(() => {
                           : new Date(o.invoiceDate).toLocaleDateString()}
                       </td>
 
-                      <td style={td}>{o.customerName}</td>
+                    <td style={td}>
+  <span
+    style={{
+      color: "#1D4ED8",
+      cursor: "pointer",
+      fontWeight: 600,
+      textDecoration: "underline"
+    }}
+    onClick={() =>
+      navigate("/patients", { state: { patientId: o.patientId } })
+    }
+  >
+    {o.customerName}
+  </span>
+</td>
 
                       <td style={{ ...td, textAlign: "right" }}>
                         ₹{o.billAmount.toLocaleString("en-IN")}
