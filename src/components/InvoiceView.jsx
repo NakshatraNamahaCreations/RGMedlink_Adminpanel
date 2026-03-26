@@ -15,7 +15,7 @@ const InvoiceView = () => {
   const fetchInvoice = async () => {
     try {
       const res = await API.get(`/orders/${id}`);
-      setInvoice(res.data);
+      setInvoice(res.data.data);
     } catch (err) {
       console.error("Failed to load invoice", err);
     }
@@ -68,7 +68,7 @@ const generateInvoice = async () => {
 
     const res = await API.get(`/orders/${invoice._id}`);
 
-    setInvoice(res.data);
+    setInvoice(res.data.data);
 
   } catch (err) {
     console.error("Invoice generation failed", err);
@@ -165,14 +165,14 @@ const generateInvoice = async () => {
           <div>
             <h3 style={sectionTitle}>Bill To</h3>
 
-            <div style={textRow}><b>Name:</b> {invoice.patient?.name}</div>
+            <div style={textRow}><b>Name:</b> {invoice.patientDetails?.name}</div>
 
-            <div style={textRow}><b>Mobile:</b> {invoice.patient?.phone}</div>
+            <div style={textRow}><b>Mobile:</b> {invoice.patientDetails?.phone}</div>
 
-            <div style={textRow}><b>Email:</b> {invoice.patient?.email || "-"}</div>
+            <div style={textRow}><b>Email:</b> {invoice.patientDetails?.email || "-"}</div>
 
             <div style={textRow}>
-              <b>Address:</b> {invoice.patient?.address || "Not Provided"}
+              <b>Address:</b> {invoice.patientDetails?.address || "Not Provided"}
             </div>
           </div>
 

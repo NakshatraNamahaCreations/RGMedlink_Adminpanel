@@ -101,6 +101,18 @@ const saveMed = async () => {
     fetchDashboard();
   };
 
+ const filtered = useMemo(() => {
+  return meds.filter((m) =>
+    m.name.toLowerCase().includes(search.toLowerCase())
+  );
+}, [meds, search]);
+
+const totalPages = Math.ceil(filtered.length / rowsPerPage);
+
+const paginatedMeds = useMemo(() => {
+  const start = (currentPage - 1) * rowsPerPage;
+  return filtered.slice(start, start + rowsPerPage);
+}, [filtered, currentPage]);
 
   const getStatus = (m) => {
 
@@ -118,66 +130,49 @@ const saveMed = async () => {
 };
 
 
-// ✅ FIRST → getCombinedStatus
 const getCombinedStatus = (m) => {
+
+  // If medicine is inactive → show inactive
   if (m.status === "Inactive") {
-    return { label: "Inactive", color: "#DC2626", bg: "#FEE2E2" };
+    return {
+      label: "Inactive",
+      color: "#DC2626",
+      bg: "#FEE2E2"
+    };
   }
 
+  // Stock based status
   if (m.stock === 0) {
-    return { label: "Out of Stock", color: "#DC2626", bg: "#FECACA" };
+    return {
+      label: "Out of Stock",
+      color: "#DC2626",
+      bg: "#FECACA"
+    };
   }
 
   if (m.stock > 0 && m.stock <= m.minStock * 0.5) {
-    return { label: "Critical", color: "#B91C1C", bg: "#FEE2E2" };
+    return {
+      label: "Critical",
+      color: "#B91C1C",
+      bg: "#FEE2E2"
+    };
   }
 
   if (m.stock > m.minStock * 0.5 && m.stock <= m.minStock) {
-    return { label: "Low Stock", color: "#D97706", bg: "#FEF3C7" };
+    return {
+      label: "Low Stock",
+      color: "#D97706",
+      bg: "#FEF3C7"
+    };
   }
 
-  return { label: "In Stock", color: "#16A34A", bg: "#DCFCE7" };
+  return {
+    label: "In Stock",
+    color: "#16A34A",
+    bg: "#DCFCE7"
+  };
+
 };
-
-
-// ✅ SECOND → getPriority
-const getPriority = (m) => {
-  const status = getCombinedStatus(m).label;
-
-  if (status === "Critical") return 1;
-  if (status === "Low Stock") return 2;
-  if (status === "Out of Stock") return 3;
-  if (status === "Inactive") return 4;
-  return 5;
-};
-
-
-// ✅ THIRD → filtered
-const filtered = useMemo(() => {
-  const data = meds.filter((m) =>
-    m.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  return [...data].sort((a, b) => {
-    const p1 = getPriority(a);
-    const p2 = getPriority(b);
-
-    if (p1 !== p2) return p1 - p2;
-
-    // 🔥 optional: sort inside same priority
-    return a.stock - b.stock;
-  });
-
-}, [meds, search]);
-
-const totalPages = Math.ceil(filtered.length / rowsPerPage);
-
-const paginatedMeds = useMemo(() => {
-  const start = (currentPage - 1) * rowsPerPage;
-  return filtered.slice(start, start + rowsPerPage);
-}, [filtered, currentPage]);
-
-
 
  const totalMeds = dashboard?.totalSKUs || 0;
 const lowStock = dashboard?.lowStockItems || 0;

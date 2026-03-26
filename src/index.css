@@ -8,3 +8,8 @@
   appearance: none;
   cursor: pointer;
 }
+
+body {
+  user-select: none;
+}
+

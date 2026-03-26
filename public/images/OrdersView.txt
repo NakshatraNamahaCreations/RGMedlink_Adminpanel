@@ -122,7 +122,6 @@ const paginatedOrders = useMemo(() => {
                 <tr style={thead}>
                   <th style={th}>Order ID</th>
                   <th style={th}>Customer</th>
-                  <th style={th}>Type</th>
                   <th style={th}>Order Date</th>
                   <th style={th}>Price</th>
                   <th style={th}>Status</th>
@@ -162,41 +161,11 @@ id={`order-${o._id}`}
         <td style={td}>{o.orderId}</td>
 
         <td style={td}>
-<span
-  style={{
-    color: "#1D4ED8",
-    cursor: "pointer",
-    fontWeight: 600,
-    textDecoration: "none"
-  }}
-  onClick={() =>
-    navigate(`/patients/${o.patientDetails?._id}`)
-  }
->
-  {o.patientDetails?.name || "Unknown"}
-</span>
-</td>
-
-<td style={td}>
   <span
-    style={{
-      padding: "4px 10px",
-      borderRadius: 20,
-      background:
-        o.patientDetails?.orderingFor === "myself"
-          ? "#DCFCE7"
-          : "#FEF3C7",
-      color:
-        o.patientDetails?.orderingFor === "myself"
-          ? "#166534"
-          : "#92400E",
-      fontWeight: 600,
-      fontSize: 12
-    }}
+    style={{ color: "#1D4ED8", cursor: "pointer", fontWeight: 600 }}
+    // onClick={() => navigate("/patients", { state: { patientId: o.patient?._id } })}
   >
-    {o.patientDetails?.orderingFor === "myself"
-      ? "Myself"
-      : "Someone"}
+   {o.patientDetails?.name || "Unknown"}
   </span>
 </td>
 
@@ -316,13 +285,10 @@ onMouseLeave={(e) => (e.target.style.background = "#F1F5F9")}
 
 <Info
   label="Mobile Number"
-  value={selectedOrder.patientDetails?.primaryPhone || selectedOrder.patientDetails?.phone}
+  value={selectedOrder.patientDetails?.primaryPhone}
 />
 
-<Info
-  label="Secondary Number"
-  value={selectedOrder.patientDetails?.secondaryPhone}
-/>
+
 
               <Info
                 label="Email"

@@ -18,6 +18,7 @@ const highlightOrderId = location.state?.orderId;
 const totalPages = Math.ceil(orders.length / rowsPerPage);
 
 const paginatedOrders = useMemo(() => {
+  if (!Array.isArray(orders)) return [];
   const start = (currentPage - 1) * rowsPerPage;
   return orders.slice(start, start + rowsPerPage);
 }, [orders, currentPage]);
@@ -44,7 +45,7 @@ useEffect(() => {
     try {
       setLoading(true);
       const res = await API.get("/orders/billing");
-      setOrders(res.data);
+      setOrders(res.data.data || []);
     } catch (err) {
       console.error("Billing fetch failed", err);
     } finally {
@@ -163,7 +164,7 @@ useEffect(() => {
   </span>
 </td>
 
-                      <td style={{ ...td, textAlign: "right" }}>
+                      <td style={{ ...td, textAlign: "left" }}>
                         ₹{o.billAmount.toLocaleString("en-IN")}
                       </td>
 
@@ -396,17 +397,24 @@ useEffect(() => {
   }}
 >
 
-<Info label="Customer Name" value={selectedInvoice.patient?.name} />
+<Info label="Customer Name" value={selectedInvoice.patientDetails?.name} />
 
-<Info label="Phone" value={selectedInvoice.patient?.phone} />
+<Info label="Phone" value={selectedInvoice.patientDetails?.phone} />
 
-<Info label="Email" value={selectedInvoice.patient?.email} />
+<Info 
+  label="Email" 
+  value={selectedInvoice.patient?.email || "-"} 
+/>
 
 <Info label="Invoice Number" value={selectedInvoice.invoiceNumber} />
 
 <Info
   label="Invoice Date"
-  value={new Date(selectedInvoice.invoiceDate).toLocaleDateString()}
+  value={
+    selectedInvoice.invoiceDate
+      ? new Date(selectedInvoice.invoiceDate).toLocaleDateString()
+      : "-"
+  }
 />
 
 </div>
@@ -456,30 +464,37 @@ useEffect(() => {
 
 <tbody>
 
-{selectedInvoice.prescription?.meds?.map((m)=>{
+{selectedInvoice.prescription?.meds?.length ? (
+  selectedInvoice.prescription.meds.map((m) => {
 
-const daily =
-(m.freq?.m||0)+(m.freq?.a||0)+(m.freq?.n||0)
+    const daily =
+      (m.freq?.m || 0) +
+      (m.freq?.a || 0) +
+      (m.freq?.n || 0);
 
-return(
-
-<tr key={m._id} style={{borderBottom:"1px solid #E5E7EB"}}>
-
-<td style={td}>{m.medicine?.name}</td>
-<td style={td}>{m.duration}</td>
-<td style={td}>{m.freq?.m}</td>
-<td style={td}>{m.freq?.a}</td>
-<td style={td}>{m.freq?.n}</td>
-<td style={td}>{daily}</td>
-<td style={td}>{m.qty}</td>
-<td style={td}>₹{m.price}</td>
-<td style={{...td,fontWeight:700}}>₹{m.subtotal}</td>
-
-</tr>
-
-)
-
-})}
+    return (
+      <tr key={m._id}>
+        <td style={td}>{m.medicine?.name}</td>
+        <td style={td}>{m.duration}</td>
+        <td style={td}>{m.freq?.m || 0}</td>
+        <td style={td}>{m.freq?.a || 0}</td>
+        <td style={td}>{m.freq?.n || 0}</td>
+        <td style={td}>{daily}</td>
+        <td style={td}>{m.qty}</td>
+        <td style={td}>₹{m.price}</td>
+        <td style={{ ...td, fontWeight: 700 }}>
+          ₹{m.subtotal}
+        </td>
+      </tr>
+    );
+  })
+) : (
+  <tr>
+    <td colSpan="9" style={{ textAlign: "center" }}>
+      No medicines found
+    </td>
+  </tr>
+)}
 
 </tbody>
 </table>
@@ -497,9 +512,29 @@ return(
   }}
 >
 
-<Summary label="Subtotal" value={selectedInvoice.prescription?.subtotal} />
+<Summary 
+  label="Subtotal" 
+  value={selectedInvoice.prescription?.subtotal || 0} 
+/>
 
-<Summary label="GST" value={selectedInvoice.prescription?.gst} />
+<Summary 
+  label="GST" 
+  value={selectedInvoice.prescription?.gst || 0} 
+/>
+
+<Summary 
+  label="Discount" 
+  value={selectedInvoice.prescription?.discount || 0} 
+/>
+
+<Summary
+  label="Total Amount"
+  value={selectedInvoice.totalAmount || 0}
+  highlight
+/>
+
+{/* <Summary label="GST" value={selectedInvoice.billingDetails?.gst} />
+<Summary label="Discount" value={selectedInvoice.billingDetails?.discount} />
 
 <Summary label="Discount" value={selectedInvoice.prescription?.discount} />
 
@@ -507,7 +542,7 @@ return(
   label="Total Amount"
   value={selectedInvoice.totalAmount}
   highlight
-/>
+/> */}
 
 </div>
 
@@ -575,6 +610,7 @@ const pageBtn = {
 
 const td = {
   padding: 14,
+  fontSize:"13px",
   borderBottom: "1px solid #E2E8F0",
 };
 

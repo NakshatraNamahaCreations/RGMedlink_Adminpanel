@@ -26,6 +26,26 @@ const rowsPerPage = 5;
 const [visibleCols, setVisibleCols] = useState(9);
 // const [payingId, setPayingId] = useState(null);
 
+const getStatusColor = (status) => {
+  if (status === "Created") return "#08ad2c";   // add this
+  if (status === "Processing") return "#3B82F6";
+  if (status === "Shipped") return "#10B981";
+  if (status === "Delivered") return "#16A34A";
+  if (status === "Pending") return "#F59E0B";
+  return "#CBD5F5";
+};
+
+
+const updateRxStatus = async (id, status) => {
+  try {
+    await API.patch(`/prescriptions/${id}/status`, { status });
+    fetchPrescriptions();
+  } catch (err) {
+    console.error("Status update failed", err);
+  }
+};
+
+
 const badge = (status) => ({
   padding: "4px 10px",
   borderRadius: 20,
@@ -57,43 +77,58 @@ const badge = (status) => ({
   
 }, [search, statusFilter]);
 
-  const fetchPrescriptions = async () => {
-    try {
-      setLoading(true);
-      const res = await API.get("/prescriptions");
+ const fetchPrescriptions = async () => {
+  try {
+    setLoading(true);
 
-      const formatted = res.data.map((r) => ({
-        id: r._id,
-        rxId: r.rxId,
-        pName: r.patient?.name || "Unknown",
-        doctor: r.doctor,
-        start: r.start,
-        expiry: r.expiry,
-        subtotal: r.subtotal,
-        gst: r.gst,
-         patientId: r.patient?._id,   // ✅ ADD THIS
-        discount: r.discount,
-        total: r.total,
-        payStatus: r.payStatus,
-        ordStatus: r.orderStatus,
-        meds: r.meds.map((m) => ({
-          mName: m.medicine?.name,
-          dur: m.duration,
-          freq: m.freq,
-          qty: m.qty,
-          price: m.price,
-          sub: m.subtotal,
-        })),
-      }));
+    const res = await API.get("/orders");
+const orders = res.data.data || [];
 
-      setRx(formatted);
-    } catch (err) {
-      console.error(err);
-      toast_("Failed to load prescriptions", "err");
-    } finally {
-      setLoading(false);
-    }
-  };
+    // const orders = orderRes.data.data || [];
+
+    // 🔥 CREATE MAP (IMPORTANT)
+    const orderMap = {};
+    orders.forEach(o => {
+      if (o.prescription) {
+        orderMap[o.prescription] = o;
+      }
+    });
+
+    const formatted = orders.map((o) => ({
+  id: o._id,
+  rxId: o.prescription?.rxId,
+  pName: o.patientDetails?.name,
+  doctor: o.prescription?.doctor,
+  start: o.prescription?.start,
+  expiry: o.prescription?.expiry,
+  subtotal: o.prescription?.subtotal,
+  gst: o.prescription?.gst,
+  discount: o.prescription?.discount,
+  total: o.totalAmount,
+
+  payStatus: o.paymentStatus,
+  ordStatus: o.orderStatus,
+  orderId: o.orderId,
+
+  meds: o.prescription?.meds?.map((m) => ({
+    mName: m.medicine?.name,
+    dur: m.duration,
+    freq: m.freq,
+    qty: m.qty,
+    price: m.price,
+    sub: m.subtotal,
+  })) || [],
+}));
+
+    setRx(formatted);
+
+  } catch (err) {
+    console.error(err);
+    toast_("Failed to load prescriptions", "err");
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ───────────────── FILTER LOGIC ─────────────────
   const filteredRx = useMemo(() => {
@@ -232,11 +267,11 @@ const columns = [
               borderRadius: 6,
               border: "1px solid #ddd",
               fontSize: 13,
-              minWidth: 220,
+              minWidth: 320,
             }}
           />
 
-          <select
+          {/* <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             style={{
@@ -249,11 +284,11 @@ const columns = [
             <option value="All">All Payments</option>
             <option value="Paid">Paid</option>
             <option value="Unpaid">Unpaid</option>
-          </select>
+          </select> */}
 
-          {canEdit && (
+          {/* {canEdit && (
             <Btn ch="New Prescription" onClick={() => setShowNew(true)} />
-          )}
+          )} */}
         </div>
       </div>
 
@@ -340,7 +375,7 @@ const columns = [
     <th style={thCenter}>Expiry</th>
     <th style={thRight}>Total</th>
     <th style={thCenter}>Payment</th>
-    <th style={thCenter}>Order</th>
+   <th style={thCenter}>Status</th>
 
     <th
       style={{
@@ -401,15 +436,28 @@ const columns = [
                 </span>
               </td>
 
-              <td style={tdCenter}>{r.ordStatus}</td>
+            <td style={tdCenter}>
+  <span
+    style={{
+      background: getStatusColor(r.ordStatus),
+      color: "#fff",
+      padding: "4px 10px",
+      borderRadius: 20,
+      fontSize: 12,
+      fontWeight: 600,
+    }}
+  >
+   {r.ordStatus || "Pending"}
+  </span>
+</td>
 
-              <td style={tdCenter}>
+             
                 <td style={tdCenter}>
   <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
     <Btn ch="View" sm onClick={() => setViewRx(r)} />
   </div>
 </td>
-              </td>
+        
             </tr>
           );
         })}
@@ -502,7 +550,7 @@ const columns = [
                 {/* <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
     <span style={{ fontSize: 13 }}>Columns:</span>
-
+    
     <select
       value={visibleCols}
       onChange={(e) => setVisibleCols(Number(e.target.value))}

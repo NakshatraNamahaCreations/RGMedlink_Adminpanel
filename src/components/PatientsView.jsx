@@ -1,614 +1,217 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import API from "../api";
-import { Card, Btn, Inp, Field, Modal } from "./Styles";
-import { useLocation } from "react-router-dom";
-const PatientsView = () => {
+import { Card } from "./Styles";
 
-  const [patients, setPatients] = useState([]);
-  const [prescriptions, setPrescriptions] = useState([]);
+const PatientsView = () => {
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [editPatient, setEditPatient] = useState(null);
-  
-const [currentPage, setCurrentPage] = useState(1);
-const rowsPerPage = 5;
-const [visibleCols, setVisibleCols] = useState(8);
-const location = useLocation();
-const highlightPatientId = location.state?.patientId;
 
   useEffect(() => {
-    fetchPatients();
-    fetchPrescriptions();
+    fetchOrders();
   }, []);
 
-  useEffect(() => {
-  if (!highlightPatientId) return;
-
-
-  setTimeout(() => {
-    const row = document.getElementById(`patient-${highlightPatientId}`);
-    if (row) {
-      row.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }, 300);
-}, [patients]);
-
-
-
-useEffect(() => {
-  if (!highlightPatientId) return;
-
-  setTimeout(() => {
-    const row = document.getElementById(`patient-${highlightPatientId}`);
-    if (row) {
-      row.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }, 300);
-}, [patients, highlightPatientId]);
-
-
-  /* FETCH PATIENTS */
-
-  const fetchPatients = async () => {
+  /* FETCH ORDERS */
+  const fetchOrders = async () => {
     try {
       setLoading(true);
-      const res = await API.get("/patients");
-      setPatients(res.data);
+      const res = await API.get("/orders");
+      setOrders(res.data.data || []);
     } catch (err) {
-      console.error("Failed to fetch patients", err);
+      console.error("Failed to fetch orders", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchPrescriptions = async () => {
-    try {
-      const res = await API.get("/prescriptions");
-      setPrescriptions(res.data);
-    } catch (err) {
-      console.error("Failed to fetch prescriptions", err);
-    }
-  };
 
-  const totalPages = Math.ceil(patients.length / rowsPerPage);
 
-const paginatedPatients = patients.slice(
-  (currentPage - 1) * rowsPerPage,
-  currentPage * rowsPerPage
-);
 
-  /* PATIENT STATS */
+  /* GROUP BY USER */
+  const groupedOrders = orders.reduce((acc, order) => {
+    const userId = order.userId || "Unknown User";
 
-  const patientStats = (patientId) => {
-    const patientPrescriptions = prescriptions.filter(
-      (p) => p.patient?._id === patientId
-    );
+    if (!acc[userId]) acc[userId] = [];
+    acc[userId].push(order);
 
-    const totalPaid = patientPrescriptions
-      .filter((p) => p.payStatus === "Paid")
-      .reduce((sum, p) => sum + (p.total || 0), 0);
-
-    const totalProducts = patientPrescriptions.reduce((sum, p) => {
-      return (
-        sum +
-        (p.meds?.reduce((mSum, m) => mSum + (m.qty || 0), 0) || 0)
-      );
-    }, 0);
-
-    return { totalPaid, totalProducts };
-  };
-
-  useEffect(() => {
-  setCurrentPage(1);
-}, [patients]);
-  /* DELETE PATIENT */
-
-  const deletePatient = async (id) => {
-    if (!window.confirm("Delete this patient?")) return;
-
-    try {
-      await API.delete(`/patients/${id}`);
-      fetchPatients();
-    } catch (err) {
-      console.error("Delete failed", err);
-    }
-  };
-
-  /* SAVE PATIENT */
-
-  const savePatient = async () => {
-    try {
-      if (editPatient._id) {
-        await API.put(`/patients/${editPatient._id}`, editPatient);
-      } else {
-        await API.post("/patients", editPatient);
-      }
-
-      setEditPatient(null);
-      fetchPatients();
-
-    } catch (err) {
-      console.error("Save failed", err);
-    }
-  };
-
-  useEffect(() => {
-  const table = document.querySelector("table");
-  if (!table) return;
-
-  const rows = table.querySelectorAll("tr");
-
-  rows.forEach((row) => {
-    const cells = row.children;
-
-    for (let i = 0; i < cells.length; i++) {
-      cells[i].style.display = i < visibleCols ? "" : "none";
-    }
-  });
-}, [visibleCols, paginatedPatients]);
+    return acc;
+  }, {});
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-
+      
       {/* HEADER */}
+      <h2 style={{ fontSize: 22, fontWeight: 700 }}>
+        Patient Details
+      </h2>
 
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <h2 style={{ fontSize: 22, fontWeight: 700 }}>
-          Patient Management
-        </h2>
-
-        <Btn
-          ch="+ Add Patient"
-          onClick={() =>
-            setEditPatient({
-              name: "",
-              age: "",
-              phone: "",
-              email: "",
-              address: "",
-              city: "",
-               state: "",
-              pincode: "",
-              condition: "",
-            })
-          }
-        />
-      </div>
-
-      {/* TABLE */}
-
-
-
-
-<div
-  style={{
-    display: "flex",
-    justifyContent: "flex-end",
-   
-  }}
->
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      gap: 10,
-      background: "#F9FAFB",
-      border: "1px solid #E5E7EB",
-      padding: "6px 12px",
-      borderRadius: 8,
-      boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-    }}
-  >
-    <span
-      style={{
-        fontSize: 13,
-        fontWeight: 600,
-        color: "#374151",
-      }}
-    >
-      Columns
-    </span>
-
-    <select
-      value={visibleCols}
-      onChange={(e) => setVisibleCols(Number(e.target.value))}
-      style={{
-        padding: "6px 28px 6px 10px",
-        borderRadius: 6,
-        border: "1px solid #D1D5DB",
-        fontSize: 13,
-        background: "#fff",
-        color: "#111827",
-        cursor: "pointer",
-        outline: "none",
-      }}
-    >
-      <option value={4}>4 Columns</option>
-      <option value={6}>6 Columns</option>
-      <option value={8}>8 Columns</option>
-      <option value={9}>All Columns</option>
-    </select>
-  </div>
-</div>
       <Card
         ch={
           loading ? (
             <div style={{ padding: 20 }}>Loading...</div>
           ) : (
-
-            
             <div style={{ overflowX: "auto" }}>
-              
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
 
-
-              
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  background: "#fff",
-                }}
-              >
+                {/* TABLE HEADER */}
                 <thead>
                   <tr style={{ background: "#06549d", color: "#fff" }}>
-                    {[
-                      "Name",
-                      "Age",
-                      "Phone",
-                      "Email",
-                      "Address",
-                      "Condition",
-                      "Total Payments",
-                      "Products",
-                      "Actions",
-                    ].map((h, i) => (
-                      <th key={i} style={thStyle}>
-                        {h}
-                      </th>
-                    ))}
+                    <th style={th}>Order ID</th>
+                    <th style={th}>Patient Name</th>
+                    <th style={th}>Type</th>
+                    <th style={th}>Primary Phone</th>
+                    <th style={th}>Secondary Phone</th>
+                    <th style={th}>Address</th>
+                    <th style={th}>Amount</th>
+                    <th style={th}>Payment</th>
+                    {/* <th style={th}>Order Status</th> */}
+                    <th style={th}>Date</th>
                   </tr>
                 </thead>
 
+                {/* TABLE BODY */}
                 <tbody>
-
-                  {paginatedPatients.map((p,i) => {
-
-                    const stats = patientStats(p._id);
+                  {Object.keys(groupedOrders).map((userId) => {
+                    const userOrders = groupedOrders[userId];
 
                     return (
-                    <tr
-  id={`patient-${p._id}`}
-  key={p._id}
-  style={{
-    background:
-      p._id === highlightPatientId
-        ? "#DBEAFE"
-        : i % 2 === 0
-        ? "#fff"
-        : "#F8FAFC",
-    fontWeight: p._id === highlightPatientId ? 600 : 400,
-  }}
->
+                      <React.Fragment key={userId}>
+                        
+                        {/* USER HEADER */}
+                        <tr style={{ background: "#E0F2FE" }}>
+                          <td colSpan="10" style={{ padding: 12, fontWeight: 700 }}>
+                            User ID: {userId}
+                          </td>
+                        </tr>
 
-                        <td style={tdStyle}>{p.name}</td>
-                        <td style={tdStyle}>{p.age}</td>
-                        <td style={tdStyle}>{p.phone}</td>
-                        <td style={tdStyle}>{p.email || "-"}</td>
+                        {userOrders.map((o) => {
+                          const type = o.patientDetails?.orderingFor || "unknown";
 
-                        <td style={tdStyle}>
-                          {p.address
-                            ? `${p.address}, ${p.city || ""} ${p.state || ""} ${p.pincode || ""}`
-                            : "-"}
-                        </td>
-                        <td style={tdStyle}>
-  {p.condition || "-"}
-</td>
+                          return (
+                            <tr
+                              key={o._id}
+                              style={{ borderBottom: "1px solid #E2E8F0" }}
+                            >
+                              {/* ORDER ID */}
+                              <td style={td}>{o.orderId || "-"}</td>
 
-                        <td style={{ ...tdStyle, textAlign: "center" }}>
-                          ₹{stats.totalPaid.toLocaleString("en-IN")}
-                        </td>
+                              {/* NAME */}
+                              <td style={td}>
+                                {o.patientDetails?.name || "Unknown"}
+                              </td>
 
-                        <td style={{ ...tdStyle, textAlign: "center" }}>
-                          {stats.totalProducts}
-                        </td>
+                              {/* TYPE */}
+                              <td style={td}>
+                                <span
+                                  style={{
+                                    padding: "4px 10px",
+                                    borderRadius: 20,
+                                    background:
+                                      type === "myself"
+                                        ? "#DCFCE7"
+                                        : type === "someone"
+                                        ? "#FEF3C7"
+                                        : "#E5E7EB",
+                                    color:
+                                      type === "myself"
+                                        ? "#166534"
+                                        : type === "someone"
+                                        ? "#92400E"
+                                        : "#374151",
+                                    fontWeight: 600,
+                                    fontSize: 12,
+                                  }}
+                                >
+                                  {type === "myself"
+                                    ? "Myself"
+                                    : type === "someone"
+                                    ? "Someone"
+                                    : "Unknown"}
+                                </span>
+                              </td>
 
-                        <td style={tdStyle}>
-                          <div style={{ display: "flex", gap: 8 }}>
-                            <Btn
-                              ch="Edit"
-                              v="ghost"
-                              sm
-                              onClick={() => setEditPatient(p)}
-                            />
+                              {/* PHONES */}
+                              <td style={td}>
+                                {o.patientDetails?.phone || o.patientDetails?.primaryPhone || "Not Available"}
+                              </td>
 
-                            <Btn
-                              ch="Delete"
-                              v="danger"
-                              sm
-                              onClick={() => deletePatient(p._id)}
-                            />
-                          </div>
-                        </td>
+                              <td style={td}>
+                                {o.patientDetails?.secondaryPhone || "-"}
+                              </td>
 
-                      </tr>
+                              {/* ADDRESS */}
+                              <td style={td}>
+                                {o.addressDetails
+                                  ? `${o.addressDetails.fullAddress}, ${o.addressDetails.city}, ${o.addressDetails.state} - ${o.addressDetails.pincode}`
+                                  : "-"}
+                              </td>
+
+                              {/* AMOUNT */}
+                              <td style={td}>₹{o.totalAmount || 0}</td>
+
+                              {/* PAYMENT */}
+                              <td style={td}>
+                                <span
+                                  style={{
+                                    color:
+                                      o.paymentStatus === "Paid"
+                                        ? "green"
+                                        : o.paymentStatus === "Pending"
+                                        ? "orange"
+                                        : "red",
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {o.paymentStatus}
+                                </span>
+                              </td>
+
+                              {/* ORDER STATUS */}
+                              {/* <td style={td}>{o.orderStatus || "-"}</td> */}
+
+                              {/* DATE */}
+                              <td style={td}>
+                                {o.createdAt
+                                  ? new Date(o.createdAt).toLocaleDateString()
+                                  : "-"}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </React.Fragment>
                     );
                   })}
 
-                  {patients.length === 0 && (
+                  {/* EMPTY STATE */}
+                  {orders.length === 0 && (
                     <tr>
-                      <td colSpan="9" style={emptyStyle}>
-                        No patients found
+                      <td colSpan="10" style={empty}>
+                        No orders found
                       </td>
                     </tr>
                   )}
-
                 </tbody>
+
               </table>
             </div>
           )
         }
       />
-
-      {/* PROFESSIONAL ADD / EDIT FORM */}
-
-      {editPatient && (
-        <Modal
-          title={editPatient._id ? "Edit Patient" : "Add Patient"}
-          w={650}
-          onClose={() => setEditPatient(null)}
-          ch={
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-
-              <div style={{ fontWeight: 600, color: "#64748B" }}>
-                Patient Information
-              </div>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: 16,
-                }}
-              >
-
-                <Field
-                  label="Full Name"
-                  ch={
-                    <Inp
-                      placeholder="Enter patient name"
-                      value={editPatient.name}
-                      onChange={(e) =>
-                        setEditPatient({ ...editPatient, name: e.target.value })
-                      }
-                    />
-                  }
-                />
-
-                <Field
-                  label="Age"
-                  ch={
-                    <Inp
-                      type="number"
-                      placeholder="Age"
-                      value={editPatient.age}
-                      onChange={(e) =>
-                        setEditPatient({ ...editPatient, age: e.target.value })
-                      }
-                    />
-                  }
-                />
-
-                <Field
-                  label="Phone Number"
-                  ch={
-                    <Inp
-                      placeholder="10 digit phone"
-                      value={editPatient.phone}
-                      onChange={(e) =>
-                        setEditPatient({ ...editPatient, phone: e.target.value })
-                      }
-                    />
-                  }
-                />
-
-                <Field
-                  label="Email"
-                  ch={
-                    <Inp
-                      placeholder="example@email.com"
-                      value={editPatient.email || ""}
-                      onChange={(e) =>
-                        setEditPatient({ ...editPatient, email: e.target.value })
-                      }
-                    />
-                  }
-                />
-
-              </div>
-
-              <div style={{ fontWeight: 600, color: "#64748B" }}>
-                Address Details
-              </div>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: 16,
-                }}
-              >
-
-                <Field
-                  label="Address"
-                  ch={
-                    <Inp
-                      placeholder="Street address"
-                      value={editPatient.address || ""}
-                      onChange={(e) =>
-                        setEditPatient({ ...editPatient, address: e.target.value })
-                      }
-                    />
-                  }
-                />
-
-                <Field
-                  label="City"
-                  ch={
-                    <Inp
-                      placeholder="City"
-                      value={editPatient.city || ""}
-                      onChange={(e) =>
-                        setEditPatient({ ...editPatient, city: e.target.value })
-                      }
-                    />
-                  }
-                />
-                <Field
-  label="State"
-  ch={
-    <Inp
-      placeholder="State"
-      value={editPatient.state || ""}
-      onChange={(e) =>
-        setEditPatient({ ...editPatient, state: e.target.value })
-      }
-    />
-  }
-/>
-
-                <Field
-                  label="Pincode"
-                  ch={
-                    <Inp
-                      placeholder="Postal code"
-                      value={editPatient.pincode || ""}
-                      onChange={(e) =>
-                        setEditPatient({ ...editPatient, pincode: e.target.value })
-                      }
-                    />
-                  }
-                />
-
-                <Field
-                  label="Medical Condition"
-                  ch={
-                    <Inp
-                      placeholder="Optional"
-                      value={editPatient.condition || ""}
-                      onChange={(e) =>
-                        setEditPatient({ ...editPatient, condition: e.target.value })
-                      }
-                    />
-                  }
-                />
-
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
-                <Btn ch="Cancel" v="ghost" onClick={() => setEditPatient(null)} />
-                <Btn ch="Save Patient" onClick={savePatient} />
-              </div>
-
-            </div>
-
-          }
-        />
-      )}
-
-
-{totalPages > 1 && (
-  <div
-    style={{
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      gap: 8,
-      marginTop: 5,
-      flexWrap: "wrap",
-    }}
-  >
-    {/* PREV BUTTON */}
-    <button
-      disabled={currentPage === 1}
-      onClick={() => setCurrentPage((p) => p - 1)}
-      style={{
-        padding: "6px 14px",
-        borderRadius: 6,
-        border: "1px solid #D1D5DB",
-        background: currentPage === 1 ? "#F3F4F6" : "#fff",
-        color: "#374151",
-        cursor: currentPage === 1 ? "not-allowed" : "pointer",
-        fontSize: 13,
-        fontWeight: 500,
-      }}
-    >
-      Prev
-    </button>
-
-    {/* PAGE NUMBERS */}
-    {[...Array(totalPages)].map((_, i) => {
-      const page = i + 1;
-
-      return (
-        <button
-          key={page}
-          onClick={() => setCurrentPage(page)}
-          style={{
-            minWidth: 34,
-            height: 34,
-            borderRadius: 6,
-            border: "1px solid #D1D5DB",
-            background: currentPage === page ? "#06549d" : "#fff",
-            color: currentPage === page ? "#fff" : "#111827",
-            cursor: "pointer",
-            fontSize: 13,
-            fontWeight: 600,
-            transition: "all .15s ease",
-          }}
-        >
-          {page}
-        </button>
-      );
-    })}
-
-    {/* NEXT BUTTON */}
-    <button
-      disabled={currentPage === totalPages}
-      onClick={() => setCurrentPage((p) => p + 1)}
-      style={{
-        padding: "6px 14px",
-        borderRadius: 6,
-        border: "1px solid #D1D5DB",
-        background: currentPage === totalPages ? "#F3F4F6" : "#fff",
-        color: "#374151",
-        cursor: currentPage === totalPages ? "not-allowed" : "pointer",
-        fontSize: 13,
-        fontWeight: 500,
-      }}
-    >
-      Next
-    </button>
-  </div>
-)}
-
     </div>
   );
 };
 
-/* TABLE STYLES */
-
-const thStyle = {
-  padding: 14,
+/* STYLES */
+const th = {
+  padding: 12,
   textAlign: "left",
-  fontWeight: 600,
 };
 
-const tdStyle = {
-  padding: 14,
-  borderBottom: "1px solid #E2E8F0",
+const td = {
+  padding: 12,
+  fontSize: 13,
 };
 
-const emptyStyle = {
+const empty = {
   padding: 30,
   textAlign: "center",
   color: "#64748B",

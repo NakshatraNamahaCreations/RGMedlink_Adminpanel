@@ -17,13 +17,16 @@ export default function Dashboard({ setTab }) {
   const navigate = useNavigate();
   /* ================= LOAD DATA ================= */
 
-  useEffect(() => {
-    API.get("/orders").then((res) => setOrders(res.data));
+const [dashboard, setDashboard] = useState(null);
 
-    API.get("/medicines").then((res) =>
-      setMedicines(res.data)
-    );
-  }, []);
+useEffect(() => {
+  API.get("/orders").then((res) => setOrders(res.data.data || []));
+
+  API.get("/dashboard/summary").then((res) => {
+    setDashboard(res.data);
+    setMedicines(res.data.medicines || []);
+  });
+}, []);
 
   /* ================= KPI CALCULATIONS ================= */
 
@@ -42,19 +45,34 @@ export default function Dashboard({ setTab }) {
 
   /* ================= INVENTORY HEALTH ================= */
 
-  const inStock = medicines.filter(
-    (m) => m.stock >= m.minStock * 2
-  ).length;
+const getStatus = (m) => {
+  // 🔥 FIRST check stock conditions
 
-  const lowStock = medicines.filter(
-    (m) =>
-      m.stock >= m.minStock &&
-      m.stock < m.minStock * 2
-  ).length;
+  if (m.stock === 0) return "Out of Stock";
 
-  const critical = medicines.filter(
-    (m) => m.stock < m.minStock
-  ).length;
+  if (m.stock > 0 && m.stock <= m.minStock * 0.5)
+    return "Critical";
+
+  if (m.stock > m.minStock * 0.5 && m.stock <= m.minStock)
+    return "Low Stock";
+
+  // 🔥 THEN check inactive (optional)
+  if (m.status === "Inactive") return "Inactive";
+
+  return "In Stock";
+};
+
+const inStock = medicines.filter(
+  (m) => getStatus(m) === "In Stock"
+).length;
+
+const lowStock = medicines.filter(
+  (m) => getStatus(m) === "Low Stock"
+).length;
+
+const critical = medicines.filter(
+  (m) => getStatus(m) === "Critical"
+).length;
 
   /* ================= MONTHLY REVENUE ================= */
 
@@ -267,7 +285,7 @@ export default function Dashboard({ setTab }) {
                         <td style={td}>{o.orderId}</td>
 
                         <td style={td}>
-                          {o.patient?.name || "Customer"}
+                          {o.patientDetails?.name || "Customer"}
                         </td>
 
                         <td style={td}>

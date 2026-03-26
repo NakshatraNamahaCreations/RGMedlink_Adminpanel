@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import API from "../api";
-
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import {
   LineChart,
   Line,
@@ -26,6 +27,89 @@ const ReportsView = () => {
 const [ordersTable, setOrdersTable] = useState([]);
 const [inventoryData, setInventoryData] = useState([]);
   const [summary, setSummary] = useState({});
+
+
+
+  const downloadSalesPDF = () => {
+  const doc = new jsPDF();
+
+  doc.text("Sales Report", 14, 10);
+
+  autoTable(doc, {
+    startY: 20,
+    head: [["Date", "Orders", "Sales"]],
+    body: salesData.map((r) => [
+      r.date,
+      r.orders,
+      `₹${r.sales}`
+    ])
+  });
+
+  doc.save("Sales_Report.pdf");
+};
+
+
+
+const downloadInventoryPDF = () => {
+  const doc = new jsPDF();
+
+  doc.text("Inventory Report", 14, 10);
+
+  autoTable(doc, {
+    startY: 20,
+    head: [["Medicine", "Category", "Stock", "Min Stock", "Status"]],
+    body: inventoryData.map((r) => [
+      r.name,
+      r.category,
+      r.stock,
+      r.minStock,
+      r.stock <= r.minStock ? "Low Stock" : "In Stock"
+    ])
+  });
+
+  doc.save("Inventory_Report.pdf");
+};
+
+
+const downloadOrdersPDF = () => {
+  const doc = new jsPDF();
+
+  doc.text("Orders Report", 14, 10);
+
+  autoTable(doc, {
+    startY: 20,
+    head: [["Order ID", "Customer", "Date", "Amount", "Status"]],
+    body: ordersTable.map((r) => [
+      r.orderId,
+      r.customer,
+      r.date,
+      `₹${r.amount}`,
+      r.orderStatus || "Created"
+    ])
+  });
+
+  doc.save("Orders_Report.pdf");
+};
+
+
+const downloadRevenuePDF = () => {
+  const doc = new jsPDF();
+
+  doc.text("Revenue Report", 14, 10);
+
+  autoTable(doc, {
+    startY: 20,
+    head: [["Date", "Orders", "Revenue"]],
+    body: revenueData.map((r) => [
+      r.date,
+      r.orders,
+      `₹${r.revenue}`
+    ])
+  });
+
+  doc.save("Revenue_Report.pdf");
+};
+
 
   useEffect(() => {
     fetchReports();
@@ -136,7 +220,11 @@ const fetchReports = async () => {
             ]}
           />
 
+<button onClick={downloadSalesPDF} style={pdfBtn}>
+      Download Sales PDF
+    </button>
           <Chart title="Sales Trend" data={salesData} dataKey="sales" />
+
 
           <Table
             columns={["Date", "Orders", "Sales"]}
@@ -161,9 +249,12 @@ const fetchReports = async () => {
               { label: "Low Stock", value: summary.inventory?.lowStock || 0 }
             ]}
           />
-
+<button onClick={downloadInventoryPDF} style={pdfBtn}>
+  Download Inventory PDF
+</button>
          <InventoryChart data={inventoryData} />
 
+            
           <Table
             columns={[
               "Medicine",
@@ -198,8 +289,14 @@ const fetchReports = async () => {
             ]}
           />
 
+         <button onClick={downloadOrdersPDF} style={pdfBtn}>
+  Download Orders PDF
+</button>
+
+
          <Chart title="Orders Trend" data={ordersData} dataKey="orders" />
 
+           
           <Table
             columns={[
               "Order ID",
@@ -214,7 +311,7 @@ const fetchReports = async () => {
               r.customer,
               r.date,
               `₹${r.amount}`,
-              r.status
+              r.orderStatus || "Created"
             ]}
           />
         </>
@@ -233,7 +330,13 @@ const fetchReports = async () => {
             ]}
           />
 
+            <button onClick={downloadRevenuePDF} style={pdfBtn}>
+  Download Revenue PDF
+</button>
+
           <Chart title="Revenue Trend" data={revenueData} dataKey="revenue" />
+
+          
 
           <Table
             columns={[
@@ -482,6 +585,17 @@ const th = {
 const td = {
   padding: 12,
   borderBottom: "1px solid #F3F4F6"
+};
+
+const pdfBtn = {
+  background: "#2563EB",
+  color: "#fff",
+  padding: "8px 14px",
+  border: "none",
+  borderRadius: "6px",
+  cursor: "pointer",
+  width:"17%",
+  marginBottom: "10px"
 };
 
 export default ReportsView;
