@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+
 import API from "../api";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -28,6 +31,30 @@ const [ordersTable, setOrdersTable] = useState([]);
 const [inventoryData, setInventoryData] = useState([]);
   const [summary, setSummary] = useState({});
 
+const downloadSalesExcel = () => {
+  const worksheetData = salesData.map((r) => ({
+    Date: r.date,
+    Orders: r.orders,
+    Sales: r.sales,
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Sales");
+
+  const excelBuffer = XLSX.write(workbook, {
+    bookType: "xlsx",
+    type: "array",
+  });
+
+  const fileData = new Blob([excelBuffer], {
+    type:
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8",
+  });
+
+  saveAs(fileData, "Sales_Report.xlsx");
+};
 
 
   const downloadSalesPDF = () => {
@@ -46,6 +73,69 @@ const [inventoryData, setInventoryData] = useState([]);
   });
 
   doc.save("Sales_Report.pdf");
+};
+
+
+
+const downloadOrdersExcel = () => {
+  const worksheetData = ordersTable.map((r) => ({
+    OrderID: r.orderId,
+    Customer: r.customer,
+    Date: r.date,
+    Amount: r.amount,
+    Status: r.orderStatus || "Created",
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(worksheetData);
+  const wb = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(wb, ws, "Orders");
+
+  const buffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+
+  saveAs(
+    new Blob([buffer]),
+    "Orders_Report.xlsx"
+  );
+};
+
+
+
+const downloadInventoryExcel = () => {
+  const worksheetData = inventoryData.map((r) => ({
+    Medicine: r.name,
+    Category: r.category,
+    Stock: r.stock,
+    MinStock: r.minStock,
+    Status: r.stock <= r.minStock ? "Low Stock" : "In Stock",
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(worksheetData);
+  const wb = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(wb, ws, "Inventory");
+
+  const buffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+
+  saveAs(new Blob([buffer]), "Inventory_Report.xlsx");
+};
+
+
+const downloadRevenueExcel = () => {
+  const worksheetData = revenueData.map((r) => ({
+    Date: r.date,
+    Orders: r.orders,
+    Revenue: r.revenue,
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(worksheetData);
+  const wb = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(wb, ws, "Revenue");
+
+  const buffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+
+  saveAs(new Blob([buffer]), "Revenue_Report.xlsx");
 };
 
 
@@ -220,9 +310,15 @@ const fetchReports = async () => {
             ]}
           />
 
-<button onClick={downloadSalesPDF} style={pdfBtn}>
-      Download Sales PDF
-    </button>
+<div style={{ display: "flex", gap: 10 }}>
+  <button onClick={downloadSalesPDF} style={pdfBtn}>
+    Download Sales PDF
+  </button>
+
+  <button onClick={downloadSalesExcel} style={pdfBtn}>
+    Download Sales Excel
+  </button>
+</div>
           <Chart title="Sales Trend" data={salesData} dataKey="sales" />
 
 
@@ -249,9 +345,18 @@ const fetchReports = async () => {
               { label: "Low Stock", value: summary.inventory?.lowStock || 0 }
             ]}
           />
-<button onClick={downloadInventoryPDF} style={pdfBtn}>
+
+
+
+<div style={{ display: "flex", gap: 10 }}>
+ <button onClick={downloadInventoryPDF} style={pdfBtn}>
   Download Inventory PDF
 </button>
+
+  <button onClick={downloadInventoryExcel} style={pdfBtn}>
+    Download Inventory Excel
+  </button>
+</div>
          <InventoryChart data={inventoryData} />
 
             
@@ -289,9 +394,18 @@ const fetchReports = async () => {
             ]}
           />
 
-         <button onClick={downloadOrdersPDF} style={pdfBtn}>
+   
+
+
+<div style={{ display: "flex", gap: 10 }}>
+      <button onClick={downloadOrdersPDF} style={pdfBtn}>
   Download Orders PDF
 </button>
+
+  <button onClick={downloadOrdersExcel} style={pdfBtn}>
+    Download Orders Excel
+  </button>
+</div>
 
 
          <Chart title="Orders Trend" data={ordersData} dataKey="orders" />
@@ -330,9 +444,18 @@ const fetchReports = async () => {
             ]}
           />
 
-            <button onClick={downloadRevenuePDF} style={pdfBtn}>
+   
+
+<div style={{ display: "flex", gap: 10 }}>
+         <button onClick={downloadRevenuePDF} style={pdfBtn}>
   Download Revenue PDF
 </button>
+
+
+  <button onClick={downloadRevenueExcel} style={pdfBtn}>
+    Download Revenue Excel
+  </button>
+</div>
 
           <Chart title="Revenue Trend" data={revenueData} dataKey="revenue" />
 
